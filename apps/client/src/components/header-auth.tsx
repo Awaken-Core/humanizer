@@ -1,6 +1,4 @@
 "use client";
-import { useLocale, useTranslations } from "next-intl";
-
 import Image from "next/image";
 import Link from "next/link";
 import { type FormEvent, useState, useEffect, useSyncExternalStore } from "react";
@@ -29,11 +27,8 @@ import { signIn, signOut, signUp, useSession } from "@/lib/auth-client";
 import { GoogleIcon } from "@/components/auth/google-svg";
 
 const subscribeToMount = () => () => {};
-const localePath = (locale: string) => `/${locale}`;
 
 export function HeaderAuth() {
-  const t = useTranslations("UI");
-  const locale = useLocale();
   const mounted = useSyncExternalStore(subscribeToMount, () => true, () => false);
   const { data: session, isPending: isSessionPending } = useSession();
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -77,19 +72,19 @@ export function HeaderAuth() {
 
     try {
       const result = isLogin
-        ? await signIn.email({ email, password, callbackURL: localePath(locale) })
+        ? await signIn.email({ email, password, callbackURL: "/" })
         : await signUp.email({
             name: String(formData.get("name")),
             email,
             password,
-            callbackURL: localePath(locale),
+            callbackURL: "/",
           });
 
       if (result.error) {
-        setError(result.error.message ?? t('connectionError'));
+        setError(result.error.message ?? "Something went wrong. Please try again.");
       }
     } catch {
-      setError(t('connectionError'));
+      setError("Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -99,13 +94,13 @@ export function HeaderAuth() {
     setIsSubmitting(true);
     setError(null);
     try {
-      const result = await signIn.social({ provider: "google", callbackURL: localePath(locale) });
+      const result = await signIn.social({ provider: "google", callbackURL: "/" });
       if (result?.error) {
-        setError(result.error.message ?? t('connectionError'));
+        setError(result.error.message ?? "Something went wrong. Please try again.");
         setIsSubmitting(false);
       }
     } catch {
-      setError(t('connectionError'));
+      setError("Something went wrong. Please try again.");
       setIsSubmitting(false);
     }
   };
@@ -114,7 +109,7 @@ export function HeaderAuth() {
     return (
       <div className="flex items-center gap-3">
         <Button variant="outline" size="sm" className="rounded-full px-3 sm:px-4 text-xs font-medium opacity-60">
-          {t('signIn')}
+          Sign in
         </Button>
       </div>
     );
@@ -124,7 +119,7 @@ export function HeaderAuth() {
     <div className="flex items-center gap-3">
       {isSessionPending ? (
         <Button variant="outline" size="sm" disabled>
-          {t('loading')}
+          Loading…
         </Button>
       ) : session?.user ? (
         <DropdownMenu>
@@ -141,7 +136,7 @@ export function HeaderAuth() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel className="min-w-0">
-              <p className="truncate font-medium">{session.user.name || t('myAccount')}</p>
+              <p className="truncate font-medium">{session.user.name || "My account"}</p>
               <p className="truncate font-normal text-muted-foreground text-xs">{session.user.email}</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -150,12 +145,12 @@ export function HeaderAuth() {
             )) && (
               <DropdownMenuItem asChild>
                 <Link href="/admin" className="cursor-pointer text-xs">
-                  {t('adminConsole')}
+                  Admin console
                 </Link>
               </DropdownMenuItem>
             )}
             <DropdownMenuItem variant="destructive" onSelect={() => void signOut()}>
-              {t('signOut')}
+              Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -163,7 +158,7 @@ export function HeaderAuth() {
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm" className="rounded-full px-3 sm:px-4 text-xs font-medium">
-              {t('signIn')}
+              Sign in
             </Button>
           </DialogTrigger>
           <DialogContent className="overflow-hidden p-0 sm:max-w-2xl md:grid md:grid-cols-[0.9fr_1.1fr] md:gap-0">
@@ -179,20 +174,20 @@ export function HeaderAuth() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/10 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-                <p className="text-base font-semibold tracking-tight">{t('start')}</p>
-                <p className="mt-1 text-xs text-white/75">{t('votePitch')}</p>
+                <p className="text-base font-semibold tracking-tight">Make your voice count</p>
+                <p className="mt-1 text-xs text-white/75">Sign in to vote and join the conversation.</p>
               </div>
             </div>
 
             <form onSubmit={handleCredentials} className="flex flex-col justify-center gap-5 p-6 sm:p-8">
               <DialogHeader className="gap-2">
                 <DialogTitle className="text-xl font-semibold tracking-tight">
-                  {isLogin ? t('welcome') : t('createAccount')}
+                  {isLogin ? "Welcome back" : "Create account"}
                 </DialogTitle>
                 <DialogDescription>
                   {isLogin
-                    ? t('loginDescription')
-                    : t('registerDescription')}
+                    ? "Sign in to continue."
+                    : "Create an account to get started."}
                 </DialogDescription>
               </DialogHeader>
 
@@ -204,29 +199,29 @@ export function HeaderAuth() {
                 disabled={isSubmitting}
                 onClick={handleGoogle}
               >
-                <GoogleIcon /> {t('google')}
+                <GoogleIcon /> Continue with Google
               </Button>
-              <FieldSeparator>{t('emailDivider')}</FieldSeparator>
+              <FieldSeparator>or continue with email</FieldSeparator>
 
               <FieldGroup className="gap-3">
                 {!isLogin && (
                   <Field>
-                    <Label htmlFor="auth-name">{t('fullName')}</Label>
+                    <Label htmlFor="auth-name">Full name</Label>
                     <Input id="auth-name" name="name" autoComplete="name" placeholder="Jane Smith" required />
                   </Field>
                 )}
                 <Field>
-                  <Label htmlFor="auth-email">{t('email')}</Label>
+                  <Label htmlFor="auth-email">Email</Label>
                   <Input id="auth-email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required />
                 </Field>
                 <Field>
-                  <Label htmlFor="auth-password">{t('password')}</Label>
+                  <Label htmlFor="auth-password">Password</Label>
                   <Input
                     id="auth-password"
                     name="password"
                     type="password"
                     autoComplete={isLogin ? "current-password" : "new-password"}
-                    placeholder={t('passwordHint')}
+                    placeholder="At least 8 characters"
                     minLength={8}
                     required
                   />
@@ -235,16 +230,16 @@ export function HeaderAuth() {
               </FieldGroup>
 
               <Button type="submit" size="lg" className="h-9 w-full text-xs font-semibold" disabled={isSubmitting}>
-                {isSubmitting ? t('wait') : isLogin ? t('signIn') : t('createAccount')}
+                {isSubmitting ? "Please wait…" : isLogin ? "Sign in" : "Create account"}
               </Button>
               <p className="text-center text-xs text-muted-foreground">
-                {isLogin ? t('newHere') : t('existingAccount')}{" "}
+                {isLogin ? "New here?" : "Already have an account?"}{" "}
                 <button
                   type="button"
                   onClick={changeMode}
                   className="font-medium text-foreground underline-offset-4 hover:underline"
                 >
-                  {isLogin ? t('createAccount') : t('signIn')}
+                  {isLogin ? "Create account" : "Sign in"}
                 </button>
               </p>
             </form>

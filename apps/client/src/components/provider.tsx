@@ -9,8 +9,8 @@ import { PostHogProvider } from "posthog-js/react";
 import { Analytics } from "@vercel/analytics/next"
 import { env } from "@/lib/env";
 
-if (typeof window !== "undefined") {
-    posthog.init(env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN!, {
+if (typeof window !== "undefined" && env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN) {
+    posthog.init(env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN, {
         api_host: env.NEXT_PUBLIC_POSTHOG_HOST,
         capture_pageview: true,
         capture_pageleave: true,
