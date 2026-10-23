@@ -1,0 +1,16 @@
+{
+  "name": "Humanizer",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"bun run --cwd apps/client dev\"",
+    "build": "bun run --cwd apps/client build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "@types/node": "^26.1.1",
+    "typescript": "^6.0.3"
+  }
+}
