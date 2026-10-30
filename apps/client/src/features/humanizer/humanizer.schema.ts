@@ -2,6 +2,11 @@ import { z } from "zod";
 import { HumanizerIntensity, HumanizerMode } from "./humanizer.types";
 
 /**
+ * Maximum characters allowed for input text in API requests
+ */
+export const MAX_INPUT_TEXT_LENGTH = 15_000;
+
+/**
  * Zod schema for runtime validation of the DeepSeek analysis response
  */
 export const WritingAnalysisSchema = z.object({
@@ -30,19 +35,67 @@ export const WritingAnalysisSchema = z.object({
 });
 
 /**
- * Zod schema for input request validation
+ * Helper to normalize mode strings (e.g. "natural" -> "Natural")
+ */
+function normalizeModeString(val: unknown): unknown {
+  if (typeof val === "string") {
+    const capitalized = val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
+    if (capitalized in HumanizerMode) {
+      return capitalized;
+    }
+  }
+  return val;
+}
+
+/**
+ * Helper to normalize intensity strings (e.g. "medium" -> "Medium")
+ */
+function normalizeIntensityString(val: unknown): unknown {
+  if (typeof val === "string") {
+    const capitalized = val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
+    if (capitalized in HumanizerIntensity) {
+      return capitalized;
+    }
+  }
+  return val;
+}
+
+/**
+ * Zod schema for input request validation, accepting both capitalized ("Natural")
+ * and lowercase ("natural") mode and intensity inputs.
  */
 export const HumanizeTextInputSchema = z.object({
   text: z
-    .string()
-    .min(1, "Input text cannot be empty.")
-    .max(50_000, "Input text exceeds maximum allowed length of 50,000 characters."),
+    .string({
+      required_error: "The 'text' field is required.",
+      invalid_type_error: "The 'text' field must be a string.",
+    })
+    .trim()
+    .min(1, "Input text cannot be empty or contain only whitespace.")
+    .max(
+      MAX_INPUT_TEXT_LENGTH,
+      `Input text exceeds the maximum allowed limit of ${MAX_INPUT_TEXT_LENGTH.toLocaleString()} characters.`
+    ),
   mode: z
-    .nativeEnum(HumanizerMode)
+    .preprocess(
+      normalizeModeString,
+      z.nativeEnum(HumanizerMode, {
+        errorMap: () => ({
+          message: "Mode must be one of: 'natural', 'academic', 'professional', or 'casual'.",
+        }),
+      })
+    )
     .optional()
     .default(HumanizerMode.Natural),
   intensity: z
-    .nativeEnum(HumanizerIntensity)
+    .preprocess(
+      normalizeIntensityString,
+      z.nativeEnum(HumanizerIntensity, {
+        errorMap: () => ({
+          message: "Intensity must be one of: 'low', 'medium', or 'high'.",
+        }),
+      })
+    )
     .optional()
     .default(HumanizerIntensity.Medium),
 });
@@ -70,6 +123,12 @@ export class EmptyInputError extends HumanizerError {
   }
 }
 
+export class PayloadTooLargeError extends HumanizerError {
+  constructor(message = `Input text exceeds the maximum allowed length of ${MAX_INPUT_TEXT_LENGTH} characters.`) {
+    super(message, "PAYLOAD_TOO_LARGE", 413);
+  }
+}
+
 export class ProviderApiError extends HumanizerError {
   constructor(message: string, status = 502, causeDetails?: unknown) {
     super(message, "PROVIDER_API_ERROR", status, causeDetails);
@@ -87,4 +146,3 @@ export class RewritingFailedError extends HumanizerError {
     super(message, "REWRITING_FAILED", 502, causeDetails);
   }
 }
-
