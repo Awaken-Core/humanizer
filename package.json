@@ -6,7 +6,8 @@
   ],
   "scripts": {
     "dev": "concurrently \"bun run --cwd apps/client dev\"",
-    "build": "bun run --cwd apps/client build"
+    "build": "bun run --cwd apps/client build",
+    "test:deepseek": "bun run --cwd apps/client test:deepseek"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

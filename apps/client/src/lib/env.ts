@@ -13,6 +13,9 @@ export const env = createEnv({
     // Set to "true" to require email verification before a user can vote.
     UPSTASH_REDIS_REST_URL: z.string().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+    DEEPSEEK_API_KEY: z.string().min(1).optional(),
+    DEEPSEEK_MODEL: z.string().default("deepseek-flash"),
+    DEEPSEEK_BASE_URL: z.string().url().default("https://api.deepseek.com"),
   },
   client: {
     NEXT_PUBLIC_APP_BASE_URL: z.url(),
