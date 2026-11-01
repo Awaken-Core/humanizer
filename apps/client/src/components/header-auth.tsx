@@ -124,14 +124,25 @@ export function HeaderAuth() {
       ) : session?.user ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="h-9 gap-0 rounded-full p-1 sm:gap-2 sm:pr-3 sm:pl-1">
-              <Avatar size="sm">
+            <Button
+              variant="outline"
+              data-account-trigger
+              aria-label={`Open account menu for ${session.user.name || session.user.email}`}
+              title={session.user.name || session.user.email}
+              className="size-10 rounded-full p-1"
+            >
+              <Avatar className="size-8 overflow-hidden">
                 {session.user.image && (
-                  <AvatarImage src={session.user.image} alt={session.user.name || "User"} />
+                  <AvatarImage
+                    src={session.user.image}
+                    alt={session.user.name || "User"}
+                    referrerPolicy="no-referrer"
+                  />
                 )}
-                <AvatarFallback>{initials}</AvatarFallback>
+                <AvatarFallback className="bg-neutral-100 text-xs font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">
+                  {initials}
+                </AvatarFallback>
               </Avatar>
-              <span className="hidden max-w-32 truncate text-xs sm:inline">{session.user.name || session.user.email}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
@@ -174,8 +185,8 @@ export function HeaderAuth() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/10 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-                <p className="text-base font-semibold tracking-tight">Make your voice count</p>
-                <p className="mt-1 text-xs text-white/75">Sign in to vote and join the conversation.</p>
+                <p className="text-base font-medium tracking-tight">Make your text sound human</p>
+                <p className="mt-1 text-xs text-white/75">Sign in to use for free.</p>
               </div>
             </div>
 
