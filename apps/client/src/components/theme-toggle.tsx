@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 
 export function ModeToggle() {
 
-    const { theme, setTheme } = useTheme()
+    const { resolvedTheme, setTheme } = useTheme()
     const [mounted, setMounted] = React.useState(false)
 
     React.useEffect(() => {
@@ -21,12 +21,14 @@ export function ModeToggle() {
     return (
         <Button
             type="button"
-            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            aria-label={resolvedTheme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            title={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             size={"icon-sm"}
-            className="rounded-full z-10 bg-white text-neutral-900 dark:bg-neutral-900 dark:text-white border-2 dark:border-neutral-700 hover:bg-white/90 dark:hover:bg-neutral-800"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            variant="outline"
+            className="z-10 rounded-full border-slate-200 bg-white text-slate-900 hover:bg-slate-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white dark:hover:bg-neutral-800"
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
         >
-            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            {resolvedTheme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
     )
 };
