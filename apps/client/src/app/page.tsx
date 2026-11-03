@@ -41,6 +41,7 @@ const tools = [
     description:
       "Explore signals of AI-generated writing and understand where a draft needs a human touch.",
     detail: "A closer look at how your content reads.",
+    live: true,
   },
   {
     name: "Summarizer",
@@ -49,6 +50,7 @@ const tools = [
     description:
       "Find the essential ideas in a long document, then make every sentence work harder.",
     detail: "Less noise. More meaning.",
+    live: true,
   },
   {
     name: "Plagiarism Detector",
@@ -57,6 +59,7 @@ const tools = [
     description:
       "Review potential overlaps and give original ideas the attention and attribution they deserve.",
     detail: "Make originality part of your process.",
+    live: true,
   },
   {
     name: "Grammar & Accuracy",
@@ -65,6 +68,7 @@ const tools = [
     description:
       "Catch awkward phrasing, sharpen your grammar, and review claims before you hit publish.",
     detail: "Small improvements. A stronger impression.",
+    live: true,
   },
   {
     name: "AI Paraphraser",
@@ -73,6 +77,7 @@ const tools = [
     description:
       "Explore a fresh way to say it. Adjust your tone and structure without losing the point.",
     detail: "A different expression. The same intention.",
+    live: true,
   },
 ];
 const faqs = [
@@ -94,7 +99,7 @@ const faqs = [
   ],
   [
     "Are all six writing tools available?",
-    "The AI Humanizer is available in the workspace. The other five tools are in development and are marked as coming soon. We do not currently offer paid subscriptions.",
+    "Yes! All six tools—AI Humanizer, AI Content Detector, Plagiarism Detector, Grammar & Accuracy, Paraphraser, and Summarizer—are fully available and accessible in the workspace studio.",
   ],
   [
     "Should I review AI-assisted writing before publishing?",
@@ -435,7 +440,7 @@ export default function HomePage() {
                     href={active.live ? "/workspace" : "#services"}
                     className={`${styles.button} ${styles.blueButton}`}
                   >
-                    {active.live ? "Humanize your text" : "Explore the toolkit"}
+                    {active.name === "AI Humanizer" ? "Humanize your text" : `Open ${active.name}`}
                     <ArrowRight size={15} />
                   </Link>
                 </div>
@@ -511,7 +516,7 @@ export default function HomePage() {
                   href={tool.live ? "/workspace" : "#faq"}
                   className={styles.textLink}
                 >
-                  {tool.live ? "Try the humanizer" : "Learn more"}
+                  {tool.live ? `Open ${tool.short}` : "Learn more"}
                   <ArrowUpRight size={16} />
                 </a>
               </article>
@@ -664,7 +669,7 @@ export default function HomePage() {
                 <span
                   key={i}
                   style={{
-                    height: `${32 + Math.pow(Math.abs(i - 13.5) / 13.5, 1.8) * 190}px`,
+                    height: `${Math.round(32 + Math.pow(Math.abs(i - 13.5) / 13.5, 1.8) * 190)}px`,
                   }}
                 />
               ))}

@@ -1,4 +1,4 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 import { createEnv } from "@t3-oss/env-nextjs";
 
 export const env = createEnv({
@@ -16,6 +16,10 @@ export const env = createEnv({
     DEEPSEEK_API_KEY: z.string().min(1).optional(),
     DEEPSEEK_MODEL: z.string().default("deepseek-flash"),
     DEEPSEEK_BASE_URL: z.string().url().default("https://api.deepseek.com"),
+    // Serper web search (used by plagiarism retrieval — optional, graceful fallback if absent)
+    SERPER_API_KEY: z.string().optional(),
+    SERPER_BASE_URL: z.string().url().default("https://google.serper.dev"),
+
   },
   client: {
     NEXT_PUBLIC_APP_BASE_URL: z.url(),

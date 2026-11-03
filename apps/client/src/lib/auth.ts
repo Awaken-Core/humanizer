@@ -13,7 +13,7 @@ if (!db) {
 export const auth = betterAuth({
   baseURL: env.NEXT_PUBLIC_APP_BASE_URL,
   secret: env.BETTER_AUTH_SECRET,
-  database: mongodbAdapter(db),
+  database: mongodbAdapter(db as any),
 
   socialProviders: {
     google: {

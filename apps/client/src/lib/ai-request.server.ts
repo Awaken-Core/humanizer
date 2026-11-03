@@ -45,7 +45,7 @@ export async function getAiRequestContext(req: NextRequest): Promise<AiRequestCo
 
 interface StartJobInput {
   context: AiRequestContext;
-  type: "AI_HUMANIZER" | "AI_SUMMARIZER" | "PARAPHRASER";
+  type: "AI_HUMANIZER" | "AI_SUMMARIZER" | "PARAPHRASER" | "PLAGIARISM_CHECKER" | "AI_DETECTOR" | "GRAMMAR_CHECKER";
   input: {
     text: string;
     mode?: string;

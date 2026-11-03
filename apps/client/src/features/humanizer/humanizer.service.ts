@@ -1,4 +1,8 @@
 import { analyzeText } from "./humanizer.analyzer";
+import {
+  preprocessText,
+  restoreProtectedBlocks,
+} from "./humanizer.preprocessor";
 import { rewriteText } from "./humanizer.rewriter";
 import {
   EmptyInputError,
@@ -44,7 +48,8 @@ function normalizeOutputText(text: string): string {
 
 /**
  * Orchestrates the end-to-end humanization workflow:
- * Input Normalization -> DeepSeek Analysis -> Validation -> Strategy Selection -> DeepSeek Rewriting -> Output Normalization
+ * Input Normalization -> Preprocessing -> DeepSeek Analysis -> Validation ->
+ * Strategy Selection -> DeepSeek Rewriting -> Block Restoration -> Output Normalization
  */
 export async function humanizeText(
   input: HumanizeTextInput
@@ -67,23 +72,33 @@ export async function humanizeText(
     throw new EmptyInputError("Input text contains only whitespace.");
   }
 
+  // 2b. Decision-Based Preprocessing (deterministic, <5 ms, runs before LLM)
+  const preprocessResult = preprocessText(normalizedText, intensity);
+  const { processedText } = preprocessResult;
+
   // 3. Stage 1: Linguistic and Structural Analysis
   const { analysis, promptTokens: analysisPromptTokens, completionTokens: analysisCompletionTokens } =
-    await analyzeText(normalizedText);
+    await analyzeText(processedText);
 
   // 4. Stage 2: Rewriting with Selected Strategy
   const rewriteResult = await rewriteText({
-    text: normalizedText,
+    text: processedText,
     analysis,
     mode,
     intensity,
   });
 
-  // 5. Output Normalization
-  const finalHumanizedText = normalizeOutputText(rewriteResult.rewrittenText);
+  // 5. Restore Protected Blocks (code fences, inline code, URLs)
+  const restoredText = restoreProtectedBlocks(
+    rewriteResult.rewrittenText,
+    preprocessResult.protectedBlocks
+  );
+
+  // 6. Output Normalization
+  const finalHumanizedText = normalizeOutputText(restoredText);
   const totalDurationMs = Date.now() - startTime;
 
-  // 6. Aggregate Token Metadata
+  // 7. Aggregate Token Metadata
   const totalPromptTokens =
     (analysisPromptTokens ?? 0) + (rewriteResult.promptTokens ?? 0);
   const totalCompletionTokens =
@@ -104,7 +119,7 @@ export async function humanizeText(
         totalTokens: totalPromptTokens + totalCompletionTokens,
       },
       analysis,
+      preprocessChanges: preprocessResult.changes,
     },
   };
 }
-

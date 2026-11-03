@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { PreprocessChange } from "./humanizer.preprocessor";
 
 /**
  * Supported Writing Modes
@@ -70,6 +71,8 @@ export interface ProcessingMetadata {
     totalTokens?: number;
   };
   analysis: WritingAnalysis;
+  /** Log of deterministic preprocessing transformations applied before the LLM pipeline. */
+  preprocessChanges?: PreprocessChange[];
 }
 
 /**
@@ -83,4 +86,3 @@ export interface HumanizeTextResult {
   selectedIntensity: HumanizerIntensityType;
   processingMetadata: ProcessingMetadata;
 }
-

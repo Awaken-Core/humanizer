@@ -70,6 +70,34 @@ export default function RootLayout({
       )}
       suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  if (typeof Element !== 'undefined') {
+                    var origSet = Element.prototype.setAttribute;
+                    Element.prototype.setAttribute = function(name, val) {
+                      if (name === 'bis_skin_checked') return;
+                      return origSet.apply(this, arguments);
+                    };
+                  }
+                  if (typeof document !== 'undefined') {
+                    var clean = function() {
+                      var els = document.querySelectorAll('[bis_skin_checked]');
+                      for (var i = 0; i < els.length; i++) {
+                        els[i].removeAttribute('bis_skin_checked');
+                      }
+                    };
+                    document.addEventListener('DOMContentLoaded', clean, { once: true });
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className="bg-background font-sans text-foreground antialiased"
         suppressHydrationWarning

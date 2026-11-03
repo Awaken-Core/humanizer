@@ -1,0 +1,24 @@
+{
+  "__prompt__": "Role: Copy editor. These are structural and punctuation patterns characteristic of AI-generated text. Each key is a regex pattern string, each value describes how to handle it.",
+  "patterns": [
+    {
+      "description": "Em-dash used as sentence connector (AI signature)",
+      "pattern": " \u2014 ",
+      "replacements": [", ", "; ", " \u2013 ", ". "]
+    },
+    {
+      "description": "Oxford comma with 'and/or' in lists",
+      "pattern": ", and ",
+      "replacements": [" and "]
+    }
+  ],
+  "forbidden_openers": [
+    "To begin with,",
+    "First and foremost,",
+    "Last but not least,",
+    "Without further ado,",
+    "It is with great pleasure",
+    "I am pleased to inform you"
+  ],
+  "zero_width_chars": ["\\u200B", "\\u200C", "\\u200D", "\\u2060", "\\uFEFF"]
+}
