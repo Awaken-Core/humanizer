@@ -6,6 +6,21 @@ import { HeaderAuth } from "@/components/header-auth";
 import { ModeToggle } from "@/components/theme-toggle";
 import { HumanizeButton } from "@/components/ui/humanize-button";
 import {
+  ServiceActionLabels,
+  ServiceLabels,
+  Services,
+  type Service,
+} from "@/lib/constants";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Sparkles,
   Copy,
   Check,
@@ -23,6 +38,62 @@ const FloatingOrb = dynamic(
 type ModeType = "natural" | "academic" | "professional" | "casual";
 type IntensityType = "low" | "medium" | "high";
 
+interface ServiceRequest {
+  text: string;
+  mode: ModeType;
+  intensity: IntensityType;
+}
+
+async function runHumanizer(request: ServiceRequest): Promise<string> {
+  const response = await fetch("/api/v1/humanize", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.error?.message || "Failed to humanize text.");
+  }
+
+  return data.data.humanizedText;
+}
+
+async function runSummarizer(request: ServiceRequest): Promise<string> {
+  const response = await fetch("/api/v1/summarize", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.error?.message || "Failed to summarize text.");
+  }
+
+  return data.data.summaryText;
+}
+
+async function runService(
+  service: Service,
+  request: ServiceRequest
+): Promise<string> {
+  switch (service) {
+    case "humanizer":
+      return runHumanizer(request);
+    case "summarizer":
+      return runSummarizer(request);
+    default:
+      throw new Error(`${ServiceLabels[service]} is not available yet.`);
+  }
+}
+
 export default function HumanizerPage() {
   const [inputText, setInputText] = useState("");
   const [outputText, setOutputText] = useState("");
@@ -31,9 +102,9 @@ export default function HumanizerPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedService, setSelectedService] = useState<Service>(Services[0]);
 
   const characterCount = inputText.length;
-  const wordCount = inputText.trim() ? inputText.trim().split(/\s+/).length : 0;
 
   const handleHumanize = async () => {
     if (!inputText.trim() || isLoading) return;
@@ -41,25 +112,12 @@ export default function HumanizerPage() {
     setError(null);
 
     try {
-      const response = await fetch("/api/humanize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text: inputText,
-          mode,
-          intensity,
-        }),
+      const result = await runService(selectedService, {
+        text: inputText,
+        mode,
+        intensity,
       });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error?.message || "Failed to humanize text.");
-      }
-
-      setOutputText(data.data.humanizedText);
+      setOutputText(result);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
       setError(msg);
@@ -112,7 +170,7 @@ export default function HumanizerPage() {
           <div className="relative flex items-center justify-center">
             {/* Ambient Cyan/Violet Backlight */}
             <div className="absolute w-72 h-72 rounded-full bg-[radial-gradient(circle,_rgba(0,180,255,0.22)_0%,_rgba(138,43,226,0.12)_45%,_transparent_70%)] blur-2xl pointer-events-none -z-10" />
-            
+
             {/* Genuine 3D Liquid-Iridescent Orb (No black box or image frame) */}
             <FloatingOrb size={260} className="z-10" />
           </div>
@@ -138,11 +196,10 @@ export default function HumanizerPage() {
                     key={m}
                     type="button"
                     onClick={() => setMode(m)}
-                    className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${
-                      mode === m
+                    className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${mode === m
                         ? "bg-[#0070F3] text-white font-medium shadow-sm"
                         : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
-                    }`}
+                      }`}
                   >
                     {m}
                   </button>
@@ -159,11 +216,10 @@ export default function HumanizerPage() {
                   key={lvl}
                   type="button"
                   onClick={() => setIntensity(lvl)}
-                  className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${
-                    intensity === lvl
+                  className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${intensity === lvl
                       ? "bg-[#0070F3] text-white font-medium shadow-sm"
                       : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
-                  }`}
+                    }`}
                 >
                   {lvl}
                 </button>
@@ -190,6 +246,29 @@ export default function HumanizerPage() {
                   <span>Clear</span>
                 </button>
               )}
+
+              <Select
+                value={selectedService}
+                onValueChange={(value) => {
+                  setSelectedService(value as Service);
+                  setOutputText("");
+                  setError(null);
+                }}
+              >
+                <SelectTrigger className="w-full max-w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Services</SelectLabel>
+                    {Services.map((item) => (
+                      <SelectItem key={item} value={item}>
+                        {ServiceLabels[item]}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
 
             <textarea
@@ -201,7 +280,7 @@ export default function HumanizerPage() {
 
             <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/50 px-4 py-3 dark:border-white/[0.06] dark:bg-white/[0.01]">
               <span className="text-xs text-slate-500 dark:text-[#6B7280]">
-                {wordCount} words &bull; {characterCount.toLocaleString()} / 15,000
+                Characters: {characterCount.toLocaleString()} / 15,000
               </span>
 
               {/* Redesigned Premium Humanize Action Button */}
@@ -209,7 +288,7 @@ export default function HumanizerPage() {
                 onClick={handleHumanize}
                 isLoading={isLoading}
                 disabled={!inputText.trim()}
-                label="Humanize text"
+                label={`${ServiceActionLabels[selectedService]} text`}
               />
             </div>
           </div>
@@ -219,7 +298,7 @@ export default function HumanizerPage() {
             <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/70 px-4 py-2.5 dark:border-white/[0.06] dark:bg-white/[0.02]">
               <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-[#D1D5DB]">
                 <span className="w-2 h-2 rounded-full bg-[#00D4FF] animate-pulse" />
-                Humanized Result
+                {ServiceLabels[selectedService]} Result
               </span>
               {outputText && (
                 <button
@@ -249,7 +328,8 @@ export default function HumanizerPage() {
                 <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-2 text-center text-slate-400 dark:text-[#4B5563]">
                   <Sparkles className="h-6 w-6 text-slate-300 dark:text-[#2A2F3D]" />
                   <p className="text-xs max-w-xs">
-                    Your polished human text will appear here with strict meaning and factual fidelity.
+                    Your {ServiceLabels[selectedService].toLowerCase()} result will
+                    appear here.
                   </p>
                 </div>
               )}
