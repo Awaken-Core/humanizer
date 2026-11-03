@@ -1,9 +1,13 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: path.resolve(__dirname, "../../"),
+  },
   experimental: {
     serverActions: {
-      bodySizeLimit: "128mb"
+      bodySizeLimit: "128mb",
     },
   },
   images: {
@@ -11,12 +15,12 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "nys3952oa4.ufs.sh",
-        pathname: "/f/*"
+        pathname: "/f/*",
       },
       {
         protocol: "https",
         hostname: "utfs.io",
-        pathname: "/f/*"
+        pathname: "/f/*",
       },
     ],
   },
