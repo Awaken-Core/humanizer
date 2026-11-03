@@ -37,11 +37,19 @@ const FloatingOrb = dynamic(
 
 type ModeType = "natural" | "academic" | "professional" | "casual";
 type IntensityType = "low" | "medium" | "high";
+type ToneType = "standard" | "formal" | "creative" | "shorten" | "expand";
+type FocusType = "vocabulary" | "structure" | "both";
 
 interface ServiceRequest {
   text: string;
   mode: ModeType;
   intensity: IntensityType;
+}
+
+interface ParaphraseRequest {
+  text: string;
+  tone: ToneType;
+  focus: FocusType;
 }
 
 async function runHumanizer(request: ServiceRequest): Promise<string> {
@@ -80,15 +88,36 @@ async function runSummarizer(request: ServiceRequest): Promise<string> {
   return data.data.summaryText;
 }
 
+async function runParaphraser(request: ParaphraseRequest): Promise<string> {
+  const response = await fetch("/api/v1/paraphrase", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.error?.message || "Failed to paraphrase text.");
+  }
+
+  return data.data.paraphrasedText;
+}
+
 async function runService(
   service: Service,
-  request: ServiceRequest
+  serviceRequest: ServiceRequest,
+  paraphraseRequest: ParaphraseRequest
 ): Promise<string> {
   switch (service) {
     case "humanizer":
-      return runHumanizer(request);
+      return runHumanizer(serviceRequest);
     case "summarizer":
-      return runSummarizer(request);
+      return runSummarizer(serviceRequest);
+    case "paraphraser":
+      return runParaphraser(paraphraseRequest);
     default:
       throw new Error(`${ServiceLabels[service]} is not available yet.`);
   }
@@ -99,11 +128,14 @@ export default function HumanizerPage() {
   const [outputText, setOutputText] = useState("");
   const [mode, setMode] = useState<ModeType>("natural");
   const [intensity, setIntensity] = useState<IntensityType>("medium");
+  const [tone, setTone] = useState<ToneType>("standard");
+  const [focus, setFocus] = useState<FocusType>("both");
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<Service>(Services[0]);
 
+  const maxChars = selectedService === "paraphraser" ? 10_000 : 15_000;
   const characterCount = inputText.length;
 
   const handleHumanize = async () => {
@@ -112,11 +144,19 @@ export default function HumanizerPage() {
     setError(null);
 
     try {
-      const result = await runService(selectedService, {
-        text: inputText,
-        mode,
-        intensity,
-      });
+      const result = await runService(
+        selectedService,
+        {
+          text: inputText,
+          mode,
+          intensity,
+        },
+        {
+          text: inputText,
+          tone,
+          focus,
+        }
+      );
       setOutputText(result);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
@@ -171,61 +211,124 @@ export default function HumanizerPage() {
             {/* Ambient Cyan/Violet Backlight */}
             <div className="absolute w-72 h-72 rounded-full bg-[radial-gradient(circle,_rgba(0,180,255,0.22)_0%,_rgba(138,43,226,0.12)_45%,_transparent_70%)] blur-2xl pointer-events-none -z-10" />
 
-            {/* Genuine 3D Liquid-Iridescent Orb (No black box or image frame) */}
+            {/* Genuine 3D Liquid-Iridescent Orb */}
             <FloatingOrb size={260} className="z-10" />
           </div>
 
-          {/* Clean Typography */}
+          {/* Clean Dynamic Typography */}
           <h1 className="mt-4 text-center text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl lg:text-5xl dark:text-white">
-            Humanize AI Text with Precision
+            {selectedService === "paraphraser"
+              ? "Paraphrase AI Text with Precision"
+              : selectedService === "summarizer"
+              ? "Summarize Text with Clarity"
+              : "Humanize AI Text with Precision"}
           </h1>
           <p className="mt-3 max-w-xl text-center text-sm leading-relaxed text-slate-600 sm:text-base dark:text-[#9CA3AF]">
-            Transform artificial, mechanical writing into natural, authentic prose while strictly preserving all facts, numbers, and intent.
+            {selectedService === "paraphraser"
+              ? "Express thoughts with a fresh vocabulary and sentence structure while faithfully maintaining every fact and nuance."
+              : selectedService === "summarizer"
+              ? "Distill lengthy documents into concise, high-impact summaries without losing critical details."
+              : "Transform artificial, mechanical writing into natural, authentic prose while strictly preserving all facts, numbers, and intent."}
           </p>
         </div>
 
         {/* Editor Controls Bar */}
         <div className="mb-3 flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 text-xs text-slate-600 dark:text-[#9CA3AF]">
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-[#00B4D8]" />
-            <span className="font-medium text-slate-900 dark:text-white/90">Mode:</span>
-            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm dark:border-white/[0.08] dark:bg-[#12141A] dark:shadow-none">
-              {(["natural", "academic", "professional", "casual"] as ModeType[]).map(
-                (m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setMode(m)}
-                    className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${mode === m
-                        ? "bg-[#0070F3] text-white font-medium shadow-sm"
-                        : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
-                      }`}
-                  >
-                    {m}
-                  </button>
-                )
-              )}
-            </div>
-          </div>
+          {selectedService === "paraphraser" ? (
+            <>
+              {/* Paraphraser Controls: Tone */}
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#00B4D8]" />
+                <span className="font-medium text-slate-900 dark:text-white/90">Tone:</span>
+                <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm dark:border-white/[0.08] dark:bg-[#12141A] dark:shadow-none">
+                  {(["standard", "formal", "creative", "shorten", "expand"] as ToneType[]).map(
+                    (t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTone(t)}
+                        className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${
+                          tone === t
+                            ? "bg-[#0070F3] text-white font-medium shadow-sm"
+                            : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
 
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-slate-900 dark:text-white/90">Intensity:</span>
-            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm dark:border-white/[0.08] dark:bg-[#12141A] dark:shadow-none">
-              {(["low", "medium", "high"] as IntensityType[]).map((lvl) => (
-                <button
-                  key={lvl}
-                  type="button"
-                  onClick={() => setIntensity(lvl)}
-                  className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${intensity === lvl
-                      ? "bg-[#0070F3] text-white font-medium shadow-sm"
-                      : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
-                    }`}
-                >
-                  {lvl}
-                </button>
-              ))}
-            </div>
-          </div>
+              {/* Paraphraser Controls: Focus */}
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-slate-900 dark:text-white/90">Focus:</span>
+                <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm dark:border-white/[0.08] dark:bg-[#12141A] dark:shadow-none">
+                  {(["vocabulary", "structure", "both"] as FocusType[]).map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setFocus(f)}
+                      className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${
+                        focus === f
+                          ? "bg-[#0070F3] text-white font-medium shadow-sm"
+                          : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Mode Controls */}
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#00B4D8]" />
+                <span className="font-medium text-slate-900 dark:text-white/90">Mode:</span>
+                <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm dark:border-white/[0.08] dark:bg-[#12141A] dark:shadow-none">
+                  {(["natural", "academic", "professional", "casual"] as ModeType[]).map(
+                    (m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setMode(m)}
+                        className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${
+                          mode === m
+                            ? "bg-[#0070F3] text-white font-medium shadow-sm"
+                            : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Intensity Controls */}
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-slate-900 dark:text-white/90">Intensity:</span>
+                <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm dark:border-white/[0.08] dark:bg-[#12141A] dark:shadow-none">
+                  {(["low", "medium", "high"] as IntensityType[]).map((lvl) => (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setIntensity(lvl)}
+                      className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${
+                        intensity === lvl
+                          ? "bg-[#0070F3] text-white font-medium shadow-sm"
+                          : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
+                      }`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Text Editor Surface */}
@@ -274,20 +377,24 @@ export default function HumanizerPage() {
             <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Paste your AI-generated text here (up to 15,000 characters)..."
+              placeholder={
+                selectedService === "paraphraser"
+                  ? "Paste your text to paraphrase here (up to 10,000 characters)..."
+                  : `Paste your AI-generated text here (up to ${maxChars.toLocaleString()} characters)...`
+              }
               className="w-full flex-1 resize-none bg-transparent p-4 text-sm leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-[#F3F4F6] dark:placeholder:text-[#4B5563]"
             />
 
             <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/50 px-4 py-3 dark:border-white/[0.06] dark:bg-white/[0.01]">
               <span className="text-xs text-slate-500 dark:text-[#6B7280]">
-                Characters: {characterCount.toLocaleString()} / 15,000
+                Characters: {characterCount.toLocaleString()} / {maxChars.toLocaleString()}
               </span>
 
-              {/* Redesigned Premium Humanize Action Button */}
+              {/* Action Button */}
               <HumanizeButton
                 onClick={handleHumanize}
                 isLoading={isLoading}
-                disabled={!inputText.trim()}
+                disabled={!inputText.trim() || characterCount > maxChars}
                 label={`${ServiceActionLabels[selectedService]} text`}
               />
             </div>
