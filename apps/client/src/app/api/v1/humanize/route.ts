@@ -2,57 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/ratelimit";
 import {
   humanizeText,
-  HumanizeTextInputSchema,
+  ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
+  AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
+  createHumanizeTextInputSchema,
   HumanizerError,
-  MAX_INPUT_TEXT_LENGTH,
 } from "@/features/humanizer";
-
-/**
- * Extracts client IP address safely from standard headers
- */
-function getClientIp(req: NextRequest): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) {
-    const ip = forwarded.split(",")[0]?.trim();
-    if (ip && ip !== "::1" && ip !== "127.0.0.1") return ip;
-  }
-  const realIp = req.headers.get("x-real-ip");
-  if (realIp && realIp.trim()) return realIp.trim();
-
-  const cfIp = req.headers.get("cf-connecting-ip");
-  if (cfIp && cfIp.trim()) return cfIp.trim();
-
-  return "anonymous-unknown-ip";
-}
-
-/**
- * Lazily retrieves session without top-level module blocking if database isn't initialized
- */
-async function getAuthenticatedUser(
-  req: NextRequest
-): Promise<{ id: string; email?: string } | null> {
-  try {
-    const { auth } = await import("@/lib/auth");
-    const session = await auth.api.getSession({
-      headers: req.headers,
-    });
-    if (session?.user) {
-      return {
-        id: session.user.id,
-        email: session.user.email,
-      };
-    }
-  } catch {
-    // Non-blocking: Treat as anonymous user if auth service cannot be reached
-  }
-  return null;
-}
+import {
+  completeAiJob,
+  failAiJob,
+  getAiRequestContext,
+  startAiJob,
+} from "@/lib/ai-request.server";
 
 /**
  * POST /api/humanize
  * Thin endpoint orchestrating validation, rate-limiting, authentication, and execution.
  */
 export async function POST(req: NextRequest) {
+  let jobId: string | undefined;
   try {
     // 1. Content-Type Validation
     const contentType = req.headers.get("content-type") || "";
@@ -86,8 +53,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Request Validation with Zod Schema
-    const parseResult = HumanizeTextInputSchema.safeParse(body);
+    // The verified server session controls the input limit.
+    const requestContext = await getAiRequestContext(req);
+    const maxInputLength = requestContext.isAuthenticated
+      ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
+      : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
+    const parseResult = createHumanizeTextInputSchema(maxInputLength).safeParse(body);
     if (!parseResult.success) {
       const issue = parseResult.error.issues[0];
       const message = issue?.message || "Invalid input parameters.";
@@ -95,7 +66,7 @@ export async function POST(req: NextRequest) {
       // Check if this was a payload size violation
       const isLengthError =
         issue?.code === "too_big" ||
-        message.includes(MAX_INPUT_TEXT_LENGTH.toLocaleString());
+        message.includes(maxInputLength.toLocaleString());
 
       return NextResponse.json(
         {
@@ -109,16 +80,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Session & Authentication Check (Better Auth)
-    const sessionUser = await getAuthenticatedUser(req);
-
-    // 5. Rate Limiting (User ID or IP Address)
-    const isAuthenticated = !!sessionUser;
-    const rateLimitIdentifier = isAuthenticated
-      ? `user:${sessionUser!.id}`
-      : `ip:${getClientIp(req)}`;
-
-    const rateLimit = await checkRateLimit(rateLimitIdentifier, isAuthenticated);
+    const rateLimit = await checkRateLimit(
+      requestContext.rateLimitIdentifier,
+      requestContext.isAuthenticated
+    );
 
     // In production, fail closed with 503 if strict rate limiting cannot be enforced
     if (rateLimit.serviceUnavailable) {
@@ -161,14 +126,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Execute Humanization Service
+    jobId = await startAiJob({
+      context: requestContext,
+      type: "AI_HUMANIZER",
+      input: {
+        text: parseResult.data.text,
+        mode: parseResult.data.mode,
+        intensity: parseResult.data.intensity,
+      },
+    });
+
     const result = await humanizeText(parseResult.data);
+    await completeAiJob(
+      jobId,
+      { content: result.humanizedText, detectedLanguage: result.detectedLanguage },
+      {
+        model: result.processingMetadata.model,
+        durationMs: result.processingMetadata.durationMs,
+        promptTokens: result.processingMetadata.tokens?.promptTokens,
+        completionTokens: result.processingMetadata.tokens?.completionTokens,
+      }
+    );
 
     // 7. Success Response
     return NextResponse.json(
       {
         success: true,
         data: {
+          jobId,
           originalText: result.originalText,
           humanizedText: result.humanizedText,
           detectedLanguage: result.detectedLanguage,
@@ -199,6 +184,7 @@ export async function POST(req: NextRequest) {
       }
     );
   } catch (error: unknown) {
+    if (jobId) await failAiJob(jobId, error);
     // 8. Error Mapping
     if (error instanceof HumanizerError) {
       return NextResponse.json(

@@ -5,6 +5,11 @@ import dynamic from "next/dynamic";
 import { HeaderAuth } from "@/components/header-auth";
 import { ModeToggle } from "@/components/theme-toggle";
 import { HumanizeButton } from "@/components/ui/humanize-button";
+import { useSession } from "@/lib/auth-client";
+import {
+  ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
+  AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
+} from "@/features/humanizer/humanizer.schema";
 import {
   ServiceActionLabels,
   ServiceLabels,
@@ -95,6 +100,7 @@ async function runService(
 }
 
 export default function HumanizerPage() {
+  const { data: session } = useSession();
   const [inputText, setInputText] = useState("");
   const [outputText, setOutputText] = useState("");
   const [mode, setMode] = useState<ModeType>("natural");
@@ -105,9 +111,13 @@ export default function HumanizerPage() {
   const [selectedService, setSelectedService] = useState<Service>(Services[0]);
 
   const characterCount = inputText.length;
+  const maxInputLength = session?.user
+    ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
+    : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
+  const exceedsInputLimit = characterCount > maxInputLength;
 
   const handleHumanize = async () => {
-    if (!inputText.trim() || isLoading) return;
+    if (!inputText.trim() || isLoading || exceedsInputLimit) return;
     setIsLoading(true);
     setError(null);
 
@@ -274,20 +284,27 @@ export default function HumanizerPage() {
             <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Paste your AI-generated text here (up to 15,000 characters)..."
+              maxLength={maxInputLength}
+              placeholder={`Paste your AI-generated text here (up to ${maxInputLength.toLocaleString()} characters)...`}
               className="w-full flex-1 resize-none bg-transparent p-4 text-sm leading-relaxed text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-[#F3F4F6] dark:placeholder:text-[#4B5563]"
             />
 
             <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/50 px-4 py-3 dark:border-white/[0.06] dark:bg-white/[0.01]">
-              <span className="text-xs text-slate-500 dark:text-[#6B7280]">
-                Characters: {characterCount.toLocaleString()} / 15,000
+              <span
+                className={`text-xs ${
+                  exceedsInputLimit
+                    ? "text-red-500"
+                    : "text-slate-500 dark:text-[#6B7280]"
+                }`}
+              >
+                Characters: {characterCount.toLocaleString()} / {maxInputLength.toLocaleString()}
               </span>
 
               {/* Redesigned Premium Humanize Action Button */}
               <HumanizeButton
                 onClick={handleHumanize}
                 isLoading={isLoading}
-                disabled={!inputText.trim()}
+                disabled={!inputText.trim() || exceedsInputLimit}
                 label={`${ServiceActionLabels[selectedService]} text`}
               />
             </div>

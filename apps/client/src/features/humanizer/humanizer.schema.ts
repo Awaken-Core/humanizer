@@ -1,23 +1,17 @@
 import { z } from "zod";
 import { HumanizerIntensity, HumanizerMode } from "./humanizer.types";
 
-/**
- * Maximum characters allowed for input text in API requests
- */
-export const MAX_INPUT_TEXT_LENGTH = 15_000;
+export const ANONYMOUS_MAX_INPUT_TEXT_LENGTH = 800;
+export const AUTHENTICATED_MAX_INPUT_TEXT_LENGTH = 15_000;
+export const MAX_INPUT_TEXT_LENGTH = AUTHENTICATED_MAX_INPUT_TEXT_LENGTH;
 
-/**
- * Zod schema for runtime validation of the DeepSeek analysis response
- */
 export const WritingAnalysisSchema = z.object({
   language: z.string().min(1).default("English"),
   writingType: z.string().min(1).default("general prose"),
   targetAudience: z.string().min(1).default("general audience"),
   tone: z.string().min(1).default("neutral"),
   sentenceStructure: z.object({
-    averageLength: z
-      .enum(["short", "medium", "long", "varied"])
-      .default("varied"),
+    averageLength: z.enum(["short", "medium", "long", "varied"]).default("varied"),
     varietyLevel: z.enum(["low", "moderate", "high"]).default("moderate"),
     patterns: z.array(z.string()).default([]),
   }),
@@ -34,75 +28,53 @@ export const WritingAnalysisSchema = z.object({
   actionableInstructions: z.array(z.string()).default([]),
 });
 
-/**
- * Helper to normalize mode strings (e.g. "natural" -> "Natural")
- */
-function normalizeModeString(val: unknown): unknown {
-  if (typeof val === "string") {
-    const capitalized = val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
-    if (capitalized in HumanizerMode) {
-      return capitalized;
-    }
-  }
-  return val;
+function normalizeModeString(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  const normalized = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+  return normalized in HumanizerMode ? normalized : value;
 }
 
-/**
- * Helper to normalize intensity strings (e.g. "medium" -> "Medium")
- */
-function normalizeIntensityString(val: unknown): unknown {
-  if (typeof val === "string") {
-    const capitalized = val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
-    if (capitalized in HumanizerIntensity) {
-      return capitalized;
-    }
-  }
-  return val;
+function normalizeIntensityString(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  const normalized = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+  return normalized in HumanizerIntensity ? normalized : value;
 }
 
-/**
- * Zod schema for input request validation, accepting both capitalized ("Natural")
- * and lowercase ("natural") mode and intensity inputs.
- */
-export const HumanizeTextInputSchema = z.object({
-  text: z
-    .string({
-      required_error: "The 'text' field is required.",
-      invalid_type_error: "The 'text' field must be a string.",
-    })
-    .trim()
-    .min(1, "Input text cannot be empty or contain only whitespace.")
-    .max(
-      MAX_INPUT_TEXT_LENGTH,
-      `Input text exceeds the maximum allowed limit of ${MAX_INPUT_TEXT_LENGTH.toLocaleString()} characters.`
-    ),
-  mode: z
-    .preprocess(
-      normalizeModeString,
-      z.nativeEnum(HumanizerMode, {
-        errorMap: () => ({
-          message: "Mode must be one of: 'natural', 'academic', 'professional', or 'casual'.",
-        }),
-      })
-    )
-    .optional()
-    .default(HumanizerMode.Natural),
-  intensity: z
-    .preprocess(
-      normalizeIntensityString,
-      z.nativeEnum(HumanizerIntensity, {
-        errorMap: () => ({
-          message: "Intensity must be one of: 'low', 'medium', or 'high'.",
-        }),
-      })
-    )
-    .optional()
-    .default(HumanizerIntensity.Medium),
-});
+export function createHumanizeTextInputSchema(maxLength: number) {
+  return z.object({
+    text: z
+      .string({ error: "The 'text' field must be a string." })
+      .trim()
+      .min(1, "Input text cannot be empty or contain only whitespace.")
+      .max(
+        maxLength,
+        `Input text exceeds the maximum allowed limit of ${maxLength.toLocaleString()} characters.`
+      ),
+    mode: z
+      .preprocess(
+        normalizeModeString,
+        z.nativeEnum(HumanizerMode, {
+          error: "Mode must be one of: 'natural', 'academic', 'professional', or 'casual'.",
+        })
+      )
+      .optional()
+      .default(HumanizerMode.Natural),
+    intensity: z
+      .preprocess(
+        normalizeIntensityString,
+        z.nativeEnum(HumanizerIntensity, {
+          error: "Intensity must be one of: 'low', 'medium', or 'high'.",
+        })
+      )
+      .optional()
+      .default(HumanizerIntensity.Medium),
+  });
+}
 
-/**
- * Standard typed errors for the Humanizer engine
- */
+export const HumanizeTextInputSchema = createHumanizeTextInputSchema(
+  AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
+);
+
 export class HumanizerError extends Error {
   public readonly code: string;
   public readonly status: number;

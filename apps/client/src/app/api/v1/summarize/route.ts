@@ -1,45 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/ratelimit";
 import {
-  HumanizeTextInputSchema,
+  ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
+  AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
+  createHumanizeTextInputSchema,
   HumanizerError,
-  MAX_INPUT_TEXT_LENGTH,
 } from "@/features/humanizer";
 import { summarizeText } from "@/features/summarizer";
-
-function getClientIp(req: NextRequest): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) {
-    const ip = forwarded.split(",")[0]?.trim();
-    if (ip && ip !== "::1" && ip !== "127.0.0.1") return ip;
-  }
-
-  const realIp = req.headers.get("x-real-ip");
-  if (realIp?.trim()) return realIp.trim();
-
-  const cfIp = req.headers.get("cf-connecting-ip");
-  if (cfIp?.trim()) return cfIp.trim();
-
-  return "anonymous-unknown-ip";
-}
-
-async function getAuthenticatedUser(
-  req: NextRequest
-): Promise<{ id: string; email?: string } | null> {
-  try {
-    const { auth } = await import("@/lib/auth");
-    const session = await auth.api.getSession({ headers: req.headers });
-    if (session?.user) {
-      return { id: session.user.id, email: session.user.email };
-    }
-  } catch {
-    // Continue as an anonymous user when authentication is unavailable.
-  }
-
-  return null;
-}
+import {
+  completeAiJob,
+  failAiJob,
+  getAiRequestContext,
+  startAiJob,
+} from "@/lib/ai-request.server";
 
 export async function POST(req: NextRequest) {
+  let jobId: string | undefined;
   try {
     const contentType = req.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
@@ -71,14 +47,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Summarizer intentionally uses the same input schema as every service.
-    const parseResult = HumanizeTextInputSchema.safeParse(body);
+    const requestContext = await getAiRequestContext(req);
+    const maxInputLength = requestContext.isAuthenticated
+      ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
+      : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
+    const parseResult = createHumanizeTextInputSchema(maxInputLength).safeParse(body);
     if (!parseResult.success) {
       const issue = parseResult.error.issues[0];
       const message = issue?.message || "Invalid input parameters.";
       const isLengthError =
         issue?.code === "too_big" ||
-        message.includes(MAX_INPUT_TEXT_LENGTH.toLocaleString());
+        message.includes(maxInputLength.toLocaleString());
 
       return NextResponse.json(
         {
@@ -92,14 +71,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const sessionUser = await getAuthenticatedUser(req);
-    const isAuthenticated = !!sessionUser;
-    const rateLimitIdentifier = isAuthenticated
-      ? `user:${sessionUser!.id}`
-      : `ip:${getClientIp(req)}`;
     const rateLimit = await checkRateLimit(
-      rateLimitIdentifier,
-      isAuthenticated
+      requestContext.rateLimitIdentifier,
+      requestContext.isAuthenticated
     );
 
     if (rateLimit.serviceUnavailable) {
@@ -142,12 +116,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    jobId = await startAiJob({
+      context: requestContext,
+      type: "AI_SUMMARIZER",
+      input: {
+        text: parseResult.data.text,
+        mode: parseResult.data.mode,
+        intensity: parseResult.data.intensity,
+      },
+    });
+
     const result = await summarizeText(parseResult.data);
+    await completeAiJob(
+      jobId,
+      { content: result.summaryText },
+      {
+        model: result.processingMetadata.model,
+        durationMs: result.processingMetadata.durationMs,
+        promptTokens: result.processingMetadata.tokens?.promptTokens,
+        completionTokens: result.processingMetadata.tokens?.completionTokens,
+      }
+    );
 
     return NextResponse.json(
       {
         success: true,
         data: {
+          jobId,
           originalText: result.originalText,
           summaryText: result.summaryText,
           selectedMode: result.selectedMode.toLowerCase(),
@@ -177,6 +172,7 @@ export async function POST(req: NextRequest) {
       }
     );
   } catch (error: unknown) {
+    if (jobId) await failAiJob(jobId, error);
     if (error instanceof HumanizerError) {
       return NextResponse.json(
         {
