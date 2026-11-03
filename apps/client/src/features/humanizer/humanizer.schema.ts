@@ -66,10 +66,7 @@ function normalizeIntensityString(val: unknown): unknown {
  */
 export const HumanizeTextInputSchema = z.object({
   text: z
-    .string({
-      required_error: "The 'text' field is required.",
-      invalid_type_error: "The 'text' field must be a string.",
-    })
+    .string()
     .trim()
     .min(1, "Input text cannot be empty or contain only whitespace.")
     .max(
@@ -79,22 +76,14 @@ export const HumanizeTextInputSchema = z.object({
   mode: z
     .preprocess(
       normalizeModeString,
-      z.nativeEnum(HumanizerMode, {
-        errorMap: () => ({
-          message: "Mode must be one of: 'natural', 'academic', 'professional', or 'casual'.",
-        }),
-      })
+      z.nativeEnum(HumanizerMode)
     )
     .optional()
     .default(HumanizerMode.Natural),
   intensity: z
     .preprocess(
       normalizeIntensityString,
-      z.nativeEnum(HumanizerIntensity, {
-        errorMap: () => ({
-          message: "Intensity must be one of: 'low', 'medium', or 'high'.",
-        }),
-      })
+      z.nativeEnum(HumanizerIntensity)
     )
     .optional()
     .default(HumanizerIntensity.Medium),

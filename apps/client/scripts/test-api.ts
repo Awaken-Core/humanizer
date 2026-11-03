@@ -6,7 +6,7 @@ process.env.SKIP_ENV_VALIDATION = "1";
 dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
-import { POST } from "../src/app/api/humanize/route";
+import { POST } from "../src/app/api/v1/humanize/route";
 
 async function runApiTests() {
   console.log("==================================================");
