@@ -7,6 +7,13 @@ import { ModeToggle } from "@/components/theme-toggle";
 import { HumanizeButton } from "@/components/ui/humanize-button";
 import { useSession } from "@/lib/auth-client";
 import {
+  useWorkspaceStore,
+  type ParaphraserFocus,
+  type ParaphraserTone,
+  type WorkspaceIntensity,
+  type WorkspaceMode,
+} from "@/store/workspace.store";
+import {
   ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
   AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
 } from "@/features/humanizer/humanizer.schema";
@@ -41,22 +48,10 @@ const FloatingOrb = dynamic(
   { ssr: false }
 );
 
-type ModeType = "natural" | "academic" | "professional" | "casual";
-type IntensityType = "low" | "medium" | "high";
-type ToneType = "standard" | "formal" | "creative" | "shorten" | "expand";
-type FocusType = "vocabulary" | "structure" | "both";
-
-interface ServiceRequest {
-  text: string;
-  mode: ModeType;
-  intensity: IntensityType;
-}
-
-interface ParaphraseRequest {
-  text: string;
-  tone: ToneType;
-  focus: FocusType;
-}
+type ModeType = WorkspaceMode;
+type IntensityType = WorkspaceIntensity;
+type ToneType = ParaphraserTone;
+type FocusType = ParaphraserFocus;
 
 interface ServiceSample {
   label: string;
@@ -114,88 +109,20 @@ const SERVICE_SAMPLES: Record<Service, ServiceSample[]> = {
   "plagiarism-checker": [],
 };
 
-async function runHumanizer(request: ServiceRequest): Promise<string> {
-  const response = await fetch("/api/v1/humanize", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(request),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok || !data.success) {
-    throw new Error(data.error?.message || "Failed to humanize text.");
-  }
-
-  return data.data.humanizedText;
-}
-
-async function runSummarizer(request: ServiceRequest): Promise<string> {
-  const response = await fetch("/api/v1/summarize", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(request),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok || !data.success) {
-    throw new Error(data.error?.message || "Failed to summarize text.");
-  }
-
-  return data.data.summaryText;
-}
-
-async function runParaphraser(request: ParaphraseRequest): Promise<string> {
-  const response = await fetch("/api/v1/paraphrase", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(request),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok || !data.success) {
-    throw new Error(data.error?.message || "Failed to paraphrase text.");
-  }
-
-  return data.data.paraphrasedText;
-}
-
-async function runService(
-  service: Service,
-  serviceRequest: ServiceRequest,
-  paraphraseRequest: ParaphraseRequest
-): Promise<string> {
-  switch (service) {
-    case "humanizer":
-      return runHumanizer(serviceRequest);
-    case "summarizer":
-      return runSummarizer(serviceRequest);
-    case "paraphraser":
-      return runParaphraser(paraphraseRequest);
-    default:
-      throw new Error(`${ServiceLabels[service]} is not available yet.`);
-  }
-}
-
 export default function HumanizerPage() {
   const { data: session } = useSession();
   const [inputText, setInputText] = useState("");
-  const [outputText, setOutputText] = useState("");
+  const outputText = useWorkspaceStore((state) => state.outputText);
+  const isLoading = useWorkspaceStore((state) => state.isLoading);
+  const error = useWorkspaceStore((state) => state.error);
+  const runService = useWorkspaceStore((state) => state.runService);
+  const clearResult = useWorkspaceStore((state) => state.clearResult);
+  const setStoreError = useWorkspaceStore((state) => state.setError);
   const [mode, setMode] = useState<ModeType>("natural");
   const [intensity, setIntensity] = useState<IntensityType>("medium");
   const [tone, setTone] = useState<ToneType>("standard");
   const [focus, setFocus] = useState<FocusType>("both");
-  const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<Service>(Services[0]);
 
   const characterCount = inputText.length;
@@ -212,36 +139,22 @@ export default function HumanizerPage() {
     if (sample.focus) setFocus(sample.focus);
     if (sample.mode) setMode(sample.mode);
     if (sample.intensity) setIntensity(sample.intensity);
-    setOutputText("");
-    setError(null);
+    clearResult();
   };
 
   const handleHumanize = async () => {
     if (!inputText.trim() || isLoading || exceedsInputLimit) return;
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const result = await runService(
-        selectedService,
-        {
-          text: inputText,
-          mode,
-          intensity,
-        },
-        {
-          text: inputText,
-          tone,
-          focus,
-        }
-      );
-      setOutputText(result);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
-      setError(msg);
-    } finally {
-      setIsLoading(false);
+    if (selectedService === "paraphraser") {
+      await runService({ service: selectedService, text: inputText, tone, focus });
+      return;
     }
+
+    if (selectedService === "humanizer" || selectedService === "summarizer") {
+      await runService({ service: selectedService, text: inputText, mode, intensity });
+      return;
+    }
+
+    setStoreError(`${ServiceLabels[selectedService]} is not available yet.`);
   };
 
   const handleCopy = async () => {
@@ -253,8 +166,7 @@ export default function HumanizerPage() {
 
   const handleReset = () => {
     setInputText("");
-    setOutputText("");
-    setError(null);
+    clearResult();
   };
 
   return (
@@ -446,8 +358,7 @@ export default function HumanizerPage() {
                   value={selectedService}
                   onValueChange={(value) => {
                     setSelectedService(value as Service);
-                    setOutputText("");
-                    setError(null);
+                    clearResult();
                   }}
                 >
                   <SelectTrigger className="w-full max-w-36">
