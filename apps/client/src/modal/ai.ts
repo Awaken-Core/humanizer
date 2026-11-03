@@ -10,6 +10,8 @@ export const AiJobStatuses = [
 export const AiJobSources = ["WORKSPACE", "BOARD"] as const;
 export const AiJobModes = ["natural", "academic", "professional", "casual"] as const;
 export const AiJobIntensities = ["low", "medium", "high"] as const;
+export const AiJobTones = ["standard", "formal", "creative", "shorten", "expand"] as const;
+export const AiJobFocuses = ["vocabulary", "structure", "both"] as const;
 
 const AiJobSchema = new Schema(
   {
@@ -67,12 +69,18 @@ const AiJobSchema = new Schema(
       mode: {
         type: String,
         enum: AiJobModes,
-        default: "natural",
       },
       intensity: {
         type: String,
         enum: AiJobIntensities,
-        default: "medium",
+      },
+      tone: {
+        type: String,
+        enum: AiJobTones,
+      },
+      focus: {
+        type: String,
+        enum: AiJobFocuses,
       },
       options: {
         type: Schema.Types.Mixed,

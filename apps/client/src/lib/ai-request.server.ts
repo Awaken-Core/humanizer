@@ -45,8 +45,14 @@ export async function getAiRequestContext(req: NextRequest): Promise<AiRequestCo
 
 interface StartJobInput {
   context: AiRequestContext;
-  type: "AI_HUMANIZER" | "AI_SUMMARIZER";
-  input: { text: string; mode: string; intensity: string };
+  type: "AI_HUMANIZER" | "AI_SUMMARIZER" | "PARAPHRASER";
+  input: {
+    text: string;
+    mode?: string;
+    intensity?: string;
+    tone?: string;
+    focus?: string;
+  };
 }
 
 export async function startAiJob({ context, type, input }: StartJobInput): Promise<string> {
@@ -59,8 +65,10 @@ export async function startAiJob({ context, type, input }: StartJobInput): Promi
     status: "PROCESSING",
     input: {
       content: input.text,
-      mode: input.mode.toLowerCase(),
-      intensity: input.intensity.toLowerCase(),
+      mode: input.mode?.toLowerCase(),
+      intensity: input.intensity?.toLowerCase(),
+      tone: input.tone?.toLowerCase(),
+      focus: input.focus?.toLowerCase(),
     },
     startedAt: new Date(),
   });
