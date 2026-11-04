@@ -1,4 +1,5 @@
 import type { PlagiarismSettings } from "@/features/plagiarism/plagiarism.types";
+import { z } from "zod";
 
 export const TOOL_IDS = [
   "humanizer",
@@ -21,7 +22,7 @@ export type ParaphraserTone =
   "standard" | "formal" | "creative" | "shorten" | "expand";
 export type ParaphraserFocus = "vocabulary" | "structure" | "both";
 
-export type ToolRunRequest =
+export type ToolRunRequest = (
   | {
       service: "humanizer" | "summarizer";
       text: string;
@@ -40,7 +41,11 @@ export type ToolRunRequest =
       settings?: Partial<PlagiarismSettings>;
     }
   | { service: "ai-detector"; text: string }
-  | { service: "grammar-checker"; text: string };
+  | { service: "grammar-checker"; text: string }
+) & {
+  documentId?: string;
+  inputSource?: "document" | "selection";
+};
 
 export interface ToolDefinition {
   id: ToolId;
@@ -140,8 +145,26 @@ export function getToolOutputText(
   data: Record<string, unknown>,
 ): string {
   for (const key of tool.outputTextKeys) {
-    const value = data[key];
-    if (typeof value === "string") return value;
+    const value = z.string().safeParse(data[key]);
+    if (value.success) return value.data;
   }
   return "";
+}
+
+export function createDefaultToolRequest(
+  service: ToolId,
+  text: string,
+): ToolRunRequest {
+  switch (service) {
+    case "humanizer":
+    case "summarizer":
+      return { service, text, mode: "natural", intensity: "medium" };
+    case "paraphraser":
+      return { service, text, tone: "standard", focus: "both" };
+    case "plagiarism-checker":
+      return { service, text };
+    case "ai-detector":
+    case "grammar-checker":
+      return { service, text };
+  }
 }

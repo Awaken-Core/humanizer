@@ -12,7 +12,9 @@ import {
   type ParaphraserTone,
   type WorkspaceIntensity,
   type WorkspaceMode,
+  type WorkspaceServiceRequest,
 } from "@/store/workspace.store";
+import { toast } from "sonner";
 import {
   ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
   AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
@@ -246,11 +248,21 @@ export default function HumanizerPage() {
     clearResult();
   };
 
+  const executeTool = async (request: WorkspaceServiceRequest) => {
+    const result = await runTool(request);
+    if (result) toast.success(`${selectedTool.label} completed`);
+    else {
+      toast.error(
+        useToolStore.getState().error || `Unable to run ${selectedTool.label}`,
+      );
+    }
+  };
+
   const handleAction = async () => {
     if (!inputText.trim() || isLoading || exceedsInputLimit) return;
 
     if (selectedService === "plagiarism-checker") {
-      await runTool({
+      await executeTool({
         service: "plagiarism-checker",
         text: inputText,
         settings: {
@@ -267,9 +279,12 @@ export default function HumanizerPage() {
         setStoreError(
           "Please provide at least 50 characters for accurate AI detection.",
         );
+        toast.error(
+          "Please provide at least 50 characters for accurate AI detection.",
+        );
         return;
       }
-      await runTool({
+      await executeTool({
         service: "ai-detector",
         text: inputText,
       });
@@ -277,7 +292,7 @@ export default function HumanizerPage() {
     }
 
     if (selectedService === "grammar-checker") {
-      await runTool({
+      await executeTool({
         service: "grammar-checker",
         text: inputText,
       });
@@ -285,7 +300,7 @@ export default function HumanizerPage() {
     }
 
     if (selectedService === "paraphraser") {
-      await runTool({
+      await executeTool({
         service: selectedService,
         text: inputText,
         tone,
@@ -295,7 +310,7 @@ export default function HumanizerPage() {
     }
 
     if (selectedService === "humanizer" || selectedService === "summarizer") {
-      await runTool({
+      await executeTool({
         service: selectedService,
         text: inputText,
         mode,
@@ -307,13 +322,19 @@ export default function HumanizerPage() {
     setStoreError(
       `${selectedTool.label} is currently under active development.`,
     );
+    toast.info(`${selectedTool.label} is currently under active development.`);
   };
 
   const handleCopy = async () => {
     if (!outputText) return;
-    await navigator.clipboard.writeText(outputText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(outputText);
+      setCopied(true);
+      toast.success("Output copied");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Unable to copy output");
+    }
   };
 
   const handleReset = () => {
@@ -393,12 +414,14 @@ export default function HumanizerPage() {
           "Unsupported format. Please upload .docx, .tex, .md, .txt, or .zip.",
         );
       }
+      toast.success(`${file.name} loaded`);
     } catch (err) {
-      setStoreError(
+      const message =
         err instanceof Error
           ? err.message
-          : "Failed to parse uploaded document.",
-      );
+          : "Failed to parse uploaded document.";
+      setStoreError(message);
+      toast.error(message);
     } finally {
       setIsFileParsing(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -461,12 +484,14 @@ export default function HumanizerPage() {
           outName,
         );
       }
+      toast.success("Document downloaded");
     } catch (err) {
-      setStoreError(
+      const message =
         err instanceof Error
           ? err.message
-          : "Failed to reconstruct and export document.",
-      );
+          : "Failed to reconstruct and export document.";
+      setStoreError(message);
+      toast.error(message);
     }
   };
 
@@ -485,6 +510,7 @@ export default function HumanizerPage() {
       `Citation Shield Applied: Injected ${res.injectedCitations.length} reference anchor(s). Broken Turnitin rolling hash chains by ${res.densityReductionScore}%.`,
     );
     setIsCitationShieldOpen(false);
+    toast.success("Citation shield applied");
   };
 
   const hasSpecializedResult =

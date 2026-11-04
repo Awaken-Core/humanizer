@@ -9,23 +9,14 @@ import {
 } from "@/lib/ai-request.server";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { checkGrammar } from "@/features/grammar";
+import { createGrammarInputDto } from "@/features/grammar/grammar.dto";
 import {
   ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
   AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
-} from "@/features/humanizer/humanizer.schema";
-import { z } from "zod";
+} from "@/features/humanizer/humanizer.dto";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
-
-const createGrammarInputSchema = (maxLength: number) =>
-  z.object({
-    text: z
-      .string({ error: "The 'text' field must be a string." })
-      .trim()
-      .min(1, "Input text cannot be empty or contain only whitespace.")
-      .max(maxLength, `Text exceeds the ${maxLength.toLocaleString()}-character limit.`),
-  });
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const start = Date.now();
@@ -36,15 +27,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // 2. Rate limiting
   const rateLimitResult = await checkRateLimit(
     context.rateLimitIdentifier,
-    context.isAuthenticated
+    context.isAuthenticated,
   );
   if (!rateLimitResult.success) {
     return NextResponse.json(
       {
-        error: "Rate limit exceeded. Please wait before submitting another grammar check.",
+        error:
+          "Rate limit exceeded. Please wait before submitting another grammar check.",
         retryAfter: rateLimitResult.reset,
       },
-      { status: 429 }
+      { status: 429 },
     );
   }
 
@@ -53,17 +45,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON in request body." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid JSON in request body." },
+      { status: 400 },
+    );
   }
 
   const maxLength = context.isAuthenticated
     ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
     : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
 
-  const schema = createGrammarInputSchema(maxLength);
+  const schema = createGrammarInputDto(maxLength);
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    const message = parsed.error.issues[0]?.message ?? "Invalid request payload.";
+    const message =
+      parsed.error.issues[0]?.message ?? "Invalid request payload.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
@@ -89,8 +85,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     console.error("[/api/v1/grammar] Unexpected error:", error);
     return NextResponse.json(
       { error: "An unexpected error occurred during grammar checking." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

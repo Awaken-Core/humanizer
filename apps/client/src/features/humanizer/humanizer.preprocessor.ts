@@ -4,36 +4,18 @@ import type { HumanizerIntensityType } from "./humanizer.types";
 import aiMarkersRaw from "./rules/ai-markers.json";
 import discourseMarkersRaw from "./rules/discourse-markers.json";
 import aiSignaturesRaw from "./rules/ai-signatures.json";
+import { AiSignaturesDto, MarkerRulesDto } from "./humanizer-rules.dto";
 
 // ---------------------------------------------------------------------------
 // Type helpers for the JSON imports
 // ---------------------------------------------------------------------------
 
-type AiMarkersMap = Record<string, string[]>;
-type DiscourseMarkersMap = Record<string, string[]>;
-
-interface AiSignaturePattern {
-  description: string;
-  pattern: string;
-  replacements: string[];
-}
-
-interface AiSignatures {
-  __prompt__: string;
-  patterns: AiSignaturePattern[];
-  forbidden_openers: string[];
-  zero_width_chars: string[];
-}
-
-// Strip the __prompt__ metadata key and cast to typed maps
-const { __prompt__: _aiPrompt, ...aiMarkers } = aiMarkersRaw as unknown as {
-  __prompt__: string;
-} & AiMarkersMap;
-
+// Parse static rule files once at module initialization.
+const { __prompt__: _aiPrompt, ...aiMarkers } =
+  MarkerRulesDto.parse(aiMarkersRaw);
 const { __prompt__: _discPrompt, ...discourseMarkers } =
-  discourseMarkersRaw as unknown as { __prompt__: string } & DiscourseMarkersMap;
-
-const aiSignatures = aiSignaturesRaw as unknown as AiSignatures;
+  MarkerRulesDto.parse(discourseMarkersRaw);
+const aiSignatures = AiSignaturesDto.parse(aiSignaturesRaw);
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -92,10 +74,7 @@ function hashString(str: string): number {
  * The seed combines the document text hash with the phrase being replaced so
  * each phrase gets its own stable but document-specific selection.
  */
-function deterministicPick(
-  alternatives: string[],
-  seedStr: string
-): string {
+function deterministicPick(alternatives: string[], seedStr: string): string {
   const idx = hashString(seedStr) % alternatives.length;
   return alternatives[idx];
 }
@@ -115,7 +94,10 @@ function escapeRegex(str: string): string {
  *  - Otherwise → replacement as-is
  */
 function matchCase(original: string, replacement: string): string {
-  if (original === original.toUpperCase() && original !== original.toLowerCase()) {
+  if (
+    original === original.toUpperCase() &&
+    original !== original.toLowerCase()
+  ) {
     return replacement.toUpperCase();
   }
   if (
@@ -155,7 +137,7 @@ function purgeZeroWidthChars(text: string): { text: string; count: number } {
  */
 function eraseAiMarkers(
   text: string,
-  docHash: number
+  docHash: number,
 ): { text: string; count: number } {
   let result = text;
   let count = 0;
@@ -166,7 +148,7 @@ function eraseAiMarkers(
     // Build a word-boundary-aware, case-insensitive pattern
     const pattern = new RegExp(
       `(?<![\\w])${escapeRegex(phrase)}(?![\\w])`,
-      "gi"
+      "gi",
     );
 
     result = result.replace(pattern, (match) => {
@@ -186,9 +168,7 @@ function eraseAiMarkers(
  * occurrences (2nd, 3rd, …) are rotated through the alternatives pool so the
  * same connector is not repeated verbatim.
  */
-function rotateDiscourseMarkers(
-  text: string
-): { text: string; count: number } {
+function rotateDiscourseMarkers(text: string): { text: string; count: number } {
   let result = text;
   let totalCount = 0;
 
@@ -197,7 +177,7 @@ function rotateDiscourseMarkers(
 
     const pattern = new RegExp(
       `(?<![\\w])${escapeRegex(marker)}(?![\\w])`,
-      "g"
+      "g",
     );
 
     const matchPositions: number[] = [];
@@ -222,12 +202,11 @@ function rotateDiscourseMarkers(
           // Keep the first occurrence intact
           return match;
         }
-        const replacement =
-          alternatives[rotationIndex % alternatives.length];
+        const replacement = alternatives[rotationIndex % alternatives.length];
         rotationIndex++;
         totalCount++;
         return matchCase(match, replacement);
-      }
+      },
     );
   }
 
@@ -242,7 +221,7 @@ function rotateDiscourseMarkers(
  */
 function normalizeSignatures(
   text: string,
-  docHash: number
+  docHash: number,
 ): { text: string; count: number } {
   let result = text;
   let count = 0;
@@ -258,7 +237,8 @@ function normalizeSignatures(
   for (const sig of aiSignatures.patterns) {
     // Skip em-dash — already handled above
     if (sig.pattern === " \u2014 ") continue;
-    if (!Array.isArray(sig.replacements) || sig.replacements.length === 0) continue;
+    if (!Array.isArray(sig.replacements) || sig.replacements.length === 0)
+      continue;
 
     const seed = String(docHash) + sig.pattern;
     const replacement = deterministicPick(sig.replacements, seed);
@@ -271,10 +251,7 @@ function normalizeSignatures(
 
   // Remove forbidden openers by stripping them from the start of sentences
   for (const opener of aiSignatures.forbidden_openers) {
-    const re = new RegExp(
-      `(^|(?<=\\.\\s+))${escapeRegex(opener)}`,
-      "gi"
-    );
+    const re = new RegExp(`(^|(?<=\\.\\s+))${escapeRegex(opener)}`, "gi");
     result = result.replace(re, (match, prefix: string) => {
       count++;
       // Preserve the prefix (start or period+space), strip the opener phrase
@@ -397,7 +374,7 @@ function maskProtectedBlocks(text: string): {
  */
 export function preprocessText(
   text: string,
-  intensity: HumanizerIntensityType
+  intensity: HumanizerIntensityType,
 ): PreprocessResult {
   const changes: PreprocessChange[] = [];
 
@@ -482,10 +459,7 @@ export function preprocessText(
  * @param blocks - The protected blocks array from the matching `preprocessText` call.
  * @returns The text with all placeholders replaced by the original content.
  */
-export function restoreProtectedBlocks(
-  text: string,
-  blocks: string[]
-): string {
+export function restoreProtectedBlocks(text: string, blocks: string[]): string {
   if (blocks.length === 0) return text;
 
   let result = text;

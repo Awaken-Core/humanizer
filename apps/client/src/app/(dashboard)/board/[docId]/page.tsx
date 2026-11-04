@@ -4,7 +4,7 @@ import type { JSONContent } from "@tiptap/core";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CircleAlert,
   Cloud,
@@ -12,12 +12,29 @@ import {
   FileText,
   LoaderCircle,
   MoreHorizontal,
-  Share2,
+  Sparkles,
+  Star,
+  Archive,
 } from "lucide-react";
 import { ModeToggle } from "@/components/theme-toggle";
 import { RichTextEditor } from "@/components/document/rich-text-editor";
-import { EMPTY_TIPTAP_DOCUMENT } from "@/components/document/tiptap-extensions";
+import {
+  DocumentToolPanel,
+  type DocumentToolHistoryItem,
+} from "@/components/document/document-tool-panel";
+import {
+  EMPTY_TIPTAP_DOCUMENT,
+  plainTextToTiptapDocument,
+} from "@/components/document/tiptap-extensions";
+import {
+  createDefaultToolRequest,
+  getToolDefinition,
+  getToolOutputText,
+  type ToolId,
+} from "@/lib/tool-registry";
 import { useBoardStore } from "@/store/board.store";
+import { useToolStore } from "@/store/workspace.store";
+import { toast } from "sonner";
 import workspaceStyles from "../../workspace/workspace.module.css";
 import styles from "./document.module.css";
 
@@ -30,8 +47,21 @@ export default function DocumentPage() {
   const saveError = useBoardStore((state) => state.saveError);
   const fetchDocument = useBoardStore((state) => state.fetchDocument);
   const saveDocument = useBoardStore((state) => state.saveDocument);
+  const fetchDocumentToolHistory = useBoardStore(
+    (state) => state.fetchDocumentToolHistory,
+  );
+  const deleteDocumentToolHistory = useBoardStore(
+    (state) => state.deleteDocumentToolHistory,
+  );
+  const setFavorite = useBoardStore((state) => state.setFavorite);
+  const setArchived = useBoardStore((state) => state.setArchived);
+  const mutatingIds = useBoardStore((state) => state.mutatingIds);
   const [title, setTitle] = useState("");
   const [hasLocalChanges, setHasLocalChanges] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [toolHistory, setToolHistory] = useState<DocumentToolHistoryItem[]>([]);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [editorRevision, setEditorRevision] = useState(0);
   const [editorDraft, setEditorDraft] = useState<{
     content: JSONContent;
     plainText: string;
@@ -40,10 +70,93 @@ export default function DocumentPage() {
   } | null>(null);
   const hydratedDocumentId = useRef<string | null>(null);
   const changeSequence = useRef(0);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!moreMenuOpen) return;
+
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (!moreMenuRef.current?.contains(event.target as Node)) {
+        setMoreMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMoreMenuOpen(false);
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePress);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePress);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [moreMenuOpen]);
+
+  const runSelectionTool = useCallback(
+    async (service: ToolId, input: string) => {
+      setToolsOpen(true);
+      const result = await useToolStore.getState().runTool({
+        ...createDefaultToolRequest(service, input),
+        documentId: docId,
+        inputSource: "selection",
+      });
+      const definition = getToolDefinition(service);
+      const output = result
+        ? getToolOutputText(definition, result) || "Analysis completed."
+        : useToolStore.getState().error || `Unable to run ${definition.label}.`;
+
+      setToolHistory((history) => [
+        ...history,
+        {
+          id: crypto.randomUUID(),
+          service,
+          input,
+          output,
+          source: "selection",
+          createdAt: new Date(),
+          failed: !result,
+        },
+      ]);
+      if (result) toast.success(`${definition.label} completed`);
+      else toast.error(output);
+    },
+    [docId],
+  );
+
+  const applyToolOutput = useCallback((output: string) => {
+    const plainText = output.trim();
+    const words = plainText ? plainText.split(/\s+/).length : 0;
+    setEditorDraft({
+      content: plainTextToTiptapDocument(plainText),
+      plainText,
+      wordCount: words,
+      characterCount: plainText.length,
+    });
+    changeSequence.current += 1;
+    setHasLocalChanges(true);
+    setEditorRevision((revision) => revision + 1);
+  }, []);
 
   useEffect(() => {
     if (docId) void fetchDocument(docId);
   }, [docId, fetchDocument]);
+
+  useEffect(() => {
+    if (!docId) return;
+    let cancelled = false;
+    void fetchDocumentToolHistory(docId).then((jobs) => {
+      if (cancelled) return;
+      setToolHistory(
+        jobs.map((job) => ({
+          ...job,
+          createdAt: new Date(job.createdAt),
+        })),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [docId, fetchDocumentToolHistory]);
 
   useEffect(() => {
     if (activeDocument && hydratedDocumentId.current !== activeDocument.id) {
@@ -81,6 +194,9 @@ export default function DocumentPage() {
       } else if (!saved && sequenceAtSchedule === changeSequence.current) {
         // Keep the error visible, but do not retry the same failed payload forever.
         setHasLocalChanges(false);
+        toast.error(
+          useBoardStore.getState().saveError || "Unable to save document",
+        );
       }
     }, 800);
 
@@ -143,14 +259,98 @@ export default function DocumentPage() {
                   ? "Unsaved changes"
                   : "Saved"}
           </span>
-          <ModeToggle />
           <button
             type="button"
-            className={styles.iconButton}
-            aria-label="More options"
+            className={styles.toolsButton}
+            onClick={() => setToolsOpen((open) => !open)}
+            aria-expanded={toolsOpen}
+            aria-controls="document-tools"
           >
-            <MoreHorizontal size={18} />
+            <Sparkles size={15} />
+            <span>Writing tools</span>
           </button>
+          <div className={styles.themeControl}>
+            <ModeToggle />
+          </div>
+          <div className={styles.moreMenu} ref={moreMenuRef}>
+            <button
+              type="button"
+              className={styles.iconButton}
+              aria-label="More options"
+              aria-haspopup="menu"
+              aria-expanded={moreMenuOpen}
+              onClick={() => setMoreMenuOpen((open) => !open)}
+            >
+              <MoreHorizontal size={18} />
+            </button>
+            {moreMenuOpen && activeDocument && (
+              <div className={styles.moreDropdown} role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={mutatingIds.includes(activeDocument.id)}
+                  onClick={async () => {
+                    const nextValue = !activeDocument.isFavorite;
+                    const updated = await setFavorite(
+                      activeDocument.id,
+                      nextValue,
+                    );
+                    if (updated) {
+                      toast.success(
+                        nextValue
+                          ? "Added to favorites"
+                          : "Removed from favorites",
+                      );
+                    } else {
+                      toast.error(
+                        useBoardStore.getState().error ||
+                          "Unable to update favorite",
+                      );
+                    }
+                    setMoreMenuOpen(false);
+                  }}
+                >
+                  <Star
+                    size={15}
+                    fill={activeDocument.isFavorite ? "currentColor" : "none"}
+                  />
+                  {activeDocument.isFavorite
+                    ? "Remove from favorites"
+                    : "Add to favorites"}
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={mutatingIds.includes(activeDocument.id)}
+                  onClick={async () => {
+                    const nextValue = !activeDocument.isArchived;
+                    const updated = await setArchived(
+                      activeDocument.id,
+                      nextValue,
+                    );
+                    if (updated) {
+                      toast.success(
+                        nextValue
+                          ? "Document moved to archive"
+                          : "Document restored",
+                      );
+                    } else {
+                      toast.error(
+                        useBoardStore.getState().error ||
+                          "Unable to update archive",
+                      );
+                    }
+                    setMoreMenuOpen(false);
+                  }}
+                >
+                  <Archive size={15} />
+                  {activeDocument.isArchived
+                    ? "Restore from archive"
+                    : "Move to archive"}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -168,8 +368,11 @@ export default function DocumentPage() {
           </div>
         ) : activeDocument ? (
           <RichTextEditor
+            key={`${activeDocument.id}-${editorRevision}`}
             content={
-              (activeDocument.content || EMPTY_TIPTAP_DOCUMENT) as JSONContent
+              (editorDraft?.content ||
+                activeDocument.content ||
+                EMPTY_TIPTAP_DOCUMENT) as JSONContent
             }
             onChange={({ json, text, words, characters }) => {
               setEditorDraft({
@@ -181,9 +384,35 @@ export default function DocumentPage() {
               changeSequence.current += 1;
               setHasLocalChanges(true);
             }}
+            onRunSelectionTool={runSelectionTool}
           />
         ) : null}
       </main>
+      <div id="document-tools">
+        <DocumentToolPanel
+          open={toolsOpen}
+          documentId={docId}
+          documentText={
+            editorDraft?.plainText || activeDocument?.plainText || ""
+          }
+          onClose={() => setToolsOpen(false)}
+          history={toolHistory}
+          onHistoryChange={setToolHistory}
+          onClearHistory={async () => {
+            const deleted = await deleteDocumentToolHistory(docId);
+            if (deleted) {
+              setToolHistory([]);
+              toast.success("Tool history deleted");
+            } else {
+              toast.error(
+                useBoardStore.getState().error ||
+                  "Unable to delete tool history",
+              );
+            }
+          }}
+          onApplyOutput={applyToolOutput}
+        />
+      </div>
     </div>
   );
 }

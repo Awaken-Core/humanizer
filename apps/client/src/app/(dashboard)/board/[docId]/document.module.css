@@ -28,6 +28,67 @@
 .headerActions {
   justify-content: flex-end;
 }
+.themeControl {
+  display: inline-flex;
+}
+.themeControl > button {
+  width: 39px;
+  height: 39px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow:
+    inset 0 1px 0 #ffffff14,
+    0 2px 3px #00000012;
+}
+.themeControl > button:hover {
+  border-color: var(--muted);
+  background: var(--surface-alt);
+}
+.moreMenu {
+  position: relative;
+  display: inline-flex;
+}
+.moreDropdown {
+  position: absolute;
+  z-index: 100;
+  top: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  width: 196px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 16px 45px #0000001f;
+}
+.moreDropdown button {
+  display: flex;
+  width: 100%;
+  min-height: 36px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+.moreDropdown button:hover:not(:disabled) {
+  background: var(--surface-alt);
+}
+.moreDropdown button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+.moreDropdown button svg {
+  color: var(--blue);
+}
 .brandMark {
   display: inline-flex;
   padding: 5px;
@@ -57,7 +118,8 @@
   font-weight: 560;
 }
 .iconButton,
-.shareButton {
+.shareButton,
+.toolsButton {
   display: inline-flex;
   height: 36px;
   align-items: center;
@@ -80,6 +142,30 @@
   color: var(--ink);
   font-size: 12px;
   font-weight: 600;
+}
+.toolsButton {
+  width: 36px;
+  flex: 0 0 36px;
+  padding: 0;
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+.toolsButton span {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.toolsButton:hover,
+.toolsButton[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--blue) 45%, var(--line));
+  background: color-mix(in srgb, var(--blue) 8%, var(--surface));
+  color: var(--blue);
 }
 .shareButton:disabled {
   cursor: default;
@@ -137,5 +223,9 @@
   }
   .titleInput {
     width: 45vw;
+  }
+  .toolsButton {
+    width: 36px;
+    padding: 0;
   }
 }

@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { DEEPSEEK_CONFIG, getDeepSeekClient } from "@/lib/ai/deepseek.client";
 import { HumanizerError, ProviderApiError } from "@/features/humanizer";
 import {
@@ -14,55 +13,13 @@ import {
   type ParaphraserFocusType,
   type ParaphraserToneType,
 } from "./paraphraser.types";
+import { ParaphraseTextInputSchema } from "./paraphraser.dto";
 
-export const MAX_PARAPHRASE_TEXT_LENGTH = 15_000;
-
-function normalizeToneString(val: unknown): unknown {
-  if (typeof val === "string") {
-    const capitalized =
-      val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
-    if (capitalized in ParaphraserTone) {
-      return capitalized;
-    }
-  }
-  return val;
-}
-
-function normalizeFocusString(val: unknown): unknown {
-  if (typeof val === "string") {
-    const capitalized =
-      val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
-    if (capitalized in ParaphraserFocus) {
-      return capitalized;
-    }
-  }
-  return val;
-}
-
-export function createParaphraseTextInputSchema(maxLength: number) {
-  return z.object({
-    text: z
-      .string({ error: "The 'text' field must be a string." })
-      .trim()
-      .min(1, "Input text cannot be empty or contain only whitespace.")
-      .max(
-        maxLength,
-        `Input text exceeds the maximum allowed limit of ${maxLength.toLocaleString()} characters.`
-      ),
-    tone: z
-      .preprocess(normalizeToneString, z.nativeEnum(ParaphraserTone))
-      .optional()
-      .default(ParaphraserTone.Standard),
-    focus: z
-      .preprocess(normalizeFocusString, z.nativeEnum(ParaphraserFocus))
-      .optional()
-      .default(ParaphraserFocus.Both),
-  });
-}
-
-export const ParaphraseTextInputSchema = createParaphraseTextInputSchema(
-  MAX_PARAPHRASE_TEXT_LENGTH
-);
+export {
+  createParaphraseTextInputSchema,
+  MAX_PARAPHRASE_TEXT_LENGTH,
+  ParaphraseTextInputSchema,
+} from "./paraphraser.dto";
 
 function normalizeOutput(text: string): string {
   let cleaned = text.trim();
@@ -78,7 +35,7 @@ function normalizeOutput(text: string): string {
   // Strip accidental intro chatter
   cleaned = cleaned.replace(
     /^(?:here is (?:the )?paraphrased (?:text|version):|paraphrased:\s*)/i,
-    ""
+    "",
   );
 
   return cleaned.trim();
@@ -87,7 +44,7 @@ function normalizeOutput(text: string): string {
 async function generateParaphrase(
   text: string,
   tone: ParaphraserToneType,
-  focus: ParaphraserFocusType
+  focus: ParaphraserFocusType,
 ): Promise<ParaphraseGenerationResult> {
   const client = getDeepSeekClient();
   const model = DEEPSEEK_CONFIG.defaultModel;
@@ -115,7 +72,7 @@ async function generateParaphrase(
       throw new HumanizerError(
         "DeepSeek returned an empty paraphrase.",
         "PARAPHRASING_FAILED",
-        502
+        502,
       );
     }
 
@@ -134,13 +91,13 @@ async function generateParaphrase(
     throw new ProviderApiError(
       `DeepSeek paraphrasing request failed: ${message}`,
       status,
-      error
+      error,
     );
   }
 }
 
 export async function paraphraseText(
-  input: ParaphraseTextInput
+  input: ParaphraseTextInput,
 ): Promise<ParaphraseTextResult> {
   const startTime = Date.now();
   const validatedInput = ParaphraseTextInputSchema.safeParse(input);
@@ -152,7 +109,7 @@ export async function paraphraseText(
       message,
       "INVALID_INPUT",
       400,
-      validatedInput.error.issues
+      validatedInput.error.issues,
     );
   }
 
@@ -163,7 +120,10 @@ export async function paraphraseText(
   } = validatedInput.data;
 
   const originalText = text;
-  const normalizedText = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+  const normalizedText = text
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trim();
   const generated = await generateParaphrase(normalizedText, tone, focus);
   const paraphrasedText = normalizeOutput(generated.paraphrasedText);
 
@@ -171,7 +131,7 @@ export async function paraphraseText(
     throw new HumanizerError(
       "The generated paraphrase was empty.",
       "PARAPHRASING_FAILED",
-      502
+      502,
     );
   }
 

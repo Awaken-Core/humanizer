@@ -11,7 +11,9 @@ export const WritingAnalysisSchema = z.object({
   targetAudience: z.string().min(1).default("general audience"),
   tone: z.string().min(1).default("neutral"),
   sentenceStructure: z.object({
-    averageLength: z.enum(["short", "medium", "long", "varied"]).default("varied"),
+    averageLength: z
+      .enum(["short", "medium", "long", "varied"])
+      .default("varied"),
     varietyLevel: z.enum(["low", "moderate", "high"]).default("moderate"),
     patterns: z.array(z.string()).default([]),
   }),
@@ -28,51 +30,41 @@ export const WritingAnalysisSchema = z.object({
   actionableInstructions: z.array(z.string()).default([]),
 });
 
-function normalizeModeString(value: unknown): unknown {
-  if (typeof value !== "string") return value;
-  const normalized = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-  return normalized in HumanizerMode ? normalized : value;
-}
+const HumanizerModeDto = z
+  .string()
+  .transform(
+    (value) => value.charAt(0).toUpperCase() + value.slice(1).toLowerCase(),
+  )
+  .pipe(z.nativeEnum(HumanizerMode));
 
-function normalizeIntensityString(value: unknown): unknown {
-  if (typeof value !== "string") return value;
-  const normalized = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-  return normalized in HumanizerIntensity ? normalized : value;
-}
+const HumanizerIntensityDto = z
+  .string()
+  .transform(
+    (value) => value.charAt(0).toUpperCase() + value.slice(1).toLowerCase(),
+  )
+  .pipe(z.nativeEnum(HumanizerIntensity));
 
 export function createHumanizeTextInputSchema(maxLength: number) {
-  return z.object({
-    text: z
-      .string({ error: "The 'text' field must be a string." })
-      .trim()
-      .min(1, "Input text cannot be empty or contain only whitespace.")
-      .max(
-        maxLength,
-        `Input text exceeds the maximum allowed limit of ${maxLength.toLocaleString()} characters.`
+  return z
+    .object({
+      text: z
+        .string({ error: "The 'text' field must be a string." })
+        .trim()
+        .min(1, "Input text cannot be empty or contain only whitespace.")
+        .max(
+          maxLength,
+          `Input text exceeds the maximum allowed limit of ${maxLength.toLocaleString()} characters.`,
+        ),
+      mode: HumanizerModeDto.optional().default(HumanizerMode.Natural),
+      intensity: HumanizerIntensityDto.optional().default(
+        HumanizerIntensity.Medium,
       ),
-    mode: z
-      .preprocess(
-        normalizeModeString,
-        z.nativeEnum(HumanizerMode, {
-          error: "Mode must be one of: 'natural', 'academic', 'professional', or 'casual'.",
-        })
-      )
-      .optional()
-      .default(HumanizerMode.Natural),
-    intensity: z
-      .preprocess(
-        normalizeIntensityString,
-        z.nativeEnum(HumanizerIntensity, {
-          error: "Intensity must be one of: 'low', 'medium', or 'high'.",
-        })
-      )
-      .optional()
-      .default(HumanizerIntensity.Medium),
-  });
+    })
+    .strict();
 }
 
 export const HumanizeTextInputSchema = createHumanizeTextInputSchema(
-  AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
+  AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
 );
 
 export class HumanizerError extends Error {
@@ -80,7 +72,12 @@ export class HumanizerError extends Error {
   public readonly status: number;
   public readonly causeDetails?: unknown;
 
-  constructor(message: string, code = "HUMANIZER_ERROR", status = 500, causeDetails?: unknown) {
+  constructor(
+    message: string,
+    code = "HUMANIZER_ERROR",
+    status = 500,
+    causeDetails?: unknown,
+  ) {
     super(message);
     this.name = "HumanizerError";
     this.code = code;
@@ -96,7 +93,9 @@ export class EmptyInputError extends HumanizerError {
 }
 
 export class PayloadTooLargeError extends HumanizerError {
-  constructor(message = `Input text exceeds the maximum allowed length of ${MAX_INPUT_TEXT_LENGTH} characters.`) {
+  constructor(
+    message = `Input text exceeds the maximum allowed length of ${MAX_INPUT_TEXT_LENGTH} characters.`,
+  ) {
     super(message, "PAYLOAD_TOO_LARGE", 413);
   }
 }

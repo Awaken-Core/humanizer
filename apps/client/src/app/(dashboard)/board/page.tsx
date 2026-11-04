@@ -26,6 +26,7 @@ import { HeaderAuth } from "@/components/header-auth";
 import { ModeToggle } from "@/components/theme-toggle";
 import { useSession } from "@/lib/auth-client";
 import { useBoardStore } from "@/store/board.store";
+import { toast } from "sonner";
 import workspaceStyles from "../workspace/workspace.module.css";
 import styles from "./board.module.css";
 
@@ -110,7 +111,14 @@ export default function BoardPage() {
 
   const handleCreateDocument = async () => {
     const document = await createDocument();
-    if (document) router.push(`/board/${document.id}`);
+    if (document) {
+      toast.success("Document created");
+      router.push(`/board/${document.id}`);
+    } else {
+      toast.error(
+        useBoardStore.getState().error || "Unable to create document",
+      );
+    }
   };
 
   const copy = SECTION_COPY[section];
@@ -197,7 +205,11 @@ export default function BoardPage() {
               </div>
               {!isSettings && section !== "archive" && (
                 <div className={styles.primaryActions}>
-                  <button type="button" className={styles.secondaryButton}>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() => toast.info("Document upload is coming soon")}
+                  >
                     <Upload size={16} /> Upload
                   </button>
                   <button
@@ -334,12 +346,25 @@ export default function BoardPage() {
                               <button
                                 type="button"
                                 disabled={mutatingIds.includes(document.id)}
-                                onClick={(event) => {
+                                onClick={async (event) => {
                                   event.stopPropagation();
-                                  void setFavorite(
+                                  const nextValue = !document.isFavorite;
+                                  const updated = await setFavorite(
                                     document.id,
-                                    !document.isFavorite,
+                                    nextValue,
                                   );
+                                  if (updated) {
+                                    toast.success(
+                                      nextValue
+                                        ? "Added to favorites"
+                                        : "Removed from favorites",
+                                    );
+                                  } else {
+                                    toast.error(
+                                      useBoardStore.getState().error ||
+                                        "Unable to update favorite",
+                                    );
+                                  }
                                 }}
                                 onKeyDown={(event) => event.stopPropagation()}
                                 aria-label={
@@ -360,12 +385,25 @@ export default function BoardPage() {
                               <button
                                 type="button"
                                 disabled={mutatingIds.includes(document.id)}
-                                onClick={(event) => {
+                                onClick={async (event) => {
                                   event.stopPropagation();
-                                  void setArchived(
+                                  const nextValue = !document.isArchived;
+                                  const updated = await setArchived(
                                     document.id,
-                                    !document.isArchived,
+                                    nextValue,
                                   );
+                                  if (updated) {
+                                    toast.success(
+                                      nextValue
+                                        ? "Document moved to archive"
+                                        : "Document restored",
+                                    );
+                                  } else {
+                                    toast.error(
+                                      useBoardStore.getState().error ||
+                                        "Unable to update archive",
+                                    );
+                                  }
                                 }}
                                 onKeyDown={(event) => event.stopPropagation()}
                                 aria-label={

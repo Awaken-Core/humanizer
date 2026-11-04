@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import type { GrammarCheckResult, GrammarIssue, GrammarCategory } from "@/features/grammar/grammar.types";
+import type {
+  GrammarCheckResult,
+  GrammarIssue,
+  GrammarCategory,
+} from "@/features/grammar/grammar.types";
 import {
   CheckCircle,
   AlertCircle,
@@ -11,6 +15,7 @@ import {
   ArrowRight,
   Filter,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface GrammarViewProps {
   result: GrammarCheckResult;
@@ -18,29 +23,39 @@ interface GrammarViewProps {
 }
 
 export function GrammarView({ result, originalText }: GrammarViewProps) {
-  const [activeTab, setActiveTab] = useState<"issues" | "corrected" | "summary">("issues");
-  const [selectedCategory, setSelectedCategory] = useState<"all" | GrammarCategory>("all");
+  const [activeTab, setActiveTab] = useState<
+    "issues" | "corrected" | "summary"
+  >("issues");
+  const [selectedCategory, setSelectedCategory] = useState<
+    "all" | GrammarCategory
+  >("all");
   const [copied, setCopied] = useState(false);
 
-  const { correctedText, issues, score, wordCount, summary, processingTimeMs } = result;
+  const { correctedText, issues, score, wordCount, summary, processingTimeMs } =
+    result;
 
   const filteredIssues = issues.filter((issue) =>
-    selectedCategory === "all" ? true : issue.category === selectedCategory
+    selectedCategory === "all" ? true : issue.category === selectedCategory,
   );
 
   const handleCopyCorrected = async () => {
     if (!correctedText) return;
-    await navigator.clipboard.writeText(correctedText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(correctedText);
+      setCopied(true);
+      toast.success("Corrected text copied");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Unable to copy corrected text");
+    }
   };
 
   const scoreBadgeColor =
     score >= 90
       ? "text-emerald-500 border-emerald-500/20 bg-emerald-500/10"
       : score >= 75
-      ? "text-amber-500 border-amber-500/20 bg-amber-500/10"
-      : "text-rose-500 border-rose-500/20 bg-rose-500/10";
+        ? "text-amber-500 border-amber-500/20 bg-amber-500/10"
+        : "text-rose-500 border-rose-500/20 bg-rose-500/10";
 
   return (
     <div className="flex h-full flex-col gap-4 text-xs">
@@ -51,7 +66,9 @@ export function GrammarView({ result, originalText }: GrammarViewProps) {
             className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl border font-bold ${scoreBadgeColor}`}
           >
             <span className="text-base leading-none">{score}</span>
-            <span className="text-[9px] uppercase tracking-wider font-semibold">Score</span>
+            <span className="text-[9px] uppercase tracking-wider font-semibold">
+              Score
+            </span>
           </div>
           <div>
             <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-white">
@@ -68,8 +85,8 @@ export function GrammarView({ result, originalText }: GrammarViewProps) {
               )}
             </div>
             <p className="mt-0.5 text-slate-500 dark:text-slate-400">
-              {wordCount.toLocaleString()} words • {issues.length} issue(s) identified •{" "}
-              {processingTimeMs}ms
+              {wordCount.toLocaleString()} words • {issues.length} issue(s)
+              identified • {processingTimeMs}ms
             </p>
           </div>
         </div>
@@ -158,7 +175,9 @@ export function GrammarView({ result, originalText }: GrammarViewProps) {
             {filteredIssues.length === 0 ? (
               <div className="py-12 text-center text-slate-400">
                 <CheckCircle className="mx-auto mb-2 h-8 w-8 text-emerald-500" />
-                <p>No issues detected! Your writing appears grammatically sound.</p>
+                <p>
+                  No issues detected! Your writing appears grammatically sound.
+                </p>
               </div>
             ) : (
               filteredIssues.map((issue, idx) => (
@@ -212,4 +231,3 @@ export function GrammarView({ result, originalText }: GrammarViewProps) {
     </div>
   );
 }
-

@@ -1,26 +1,22 @@
 import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAiRequestContext, startAiJob, completeAiJob, failAiJob } from "@/lib/ai-request.server";
+import {
+  getAiRequestContext,
+  startAiJob,
+  completeAiJob,
+  failAiJob,
+} from "@/lib/ai-request.server";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { detectAi } from "@/features/ai-detector";
-import { z } from "zod";
+import { createAiDetectDto } from "@/features/ai-detector/ai-detector.dto";
 import {
   ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
   AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
-} from "@/features/humanizer/humanizer.schema";
+} from "@/features/humanizer/humanizer.dto";
 
 export const runtime = "nodejs";
 export const maxDuration = 10;
-
-const createAiDetectSchema = (maxLength: number) =>
-  z.object({
-    text: z
-      .string({ error: "The 'text' field must be a string." })
-      .trim()
-      .min(50, "Please provide at least 50 characters for accurate AI detection.")
-      .max(maxLength, `Text exceeds the ${maxLength.toLocaleString()}-character limit.`),
-  });
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const start = Date.now();
@@ -29,14 +25,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const context = await getAiRequestContext(req);
 
   // --- 2. Rate limiting ---
-  const rateLimitResult = await checkRateLimit(context.rateLimitIdentifier, context.isAuthenticated);
+  const rateLimitResult = await checkRateLimit(
+    context.rateLimitIdentifier,
+    context.isAuthenticated,
+  );
   if (!rateLimitResult.success) {
     return NextResponse.json(
       {
-        error: "Rate limit exceeded. Please wait before submitting another detection request.",
+        error:
+          "Rate limit exceeded. Please wait before submitting another detection request.",
         retryAfter: rateLimitResult.reset,
       },
-      { status: 429 }
+      { status: 429 },
     );
   }
 
@@ -45,16 +45,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON in request body." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid JSON in request body." },
+      { status: 400 },
+    );
   }
 
   const maxLength = context.isAuthenticated
     ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
     : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
-  const schema = createAiDetectSchema(maxLength);
+  const schema = createAiDetectDto(maxLength);
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    const message = parsed.error.issues[0]?.message ?? "Invalid request payload.";
+    const message =
+      parsed.error.issues[0]?.message ?? "Invalid request payload.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
@@ -80,7 +84,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     console.error("[/api/v1/ai-detect] Unexpected error:", error);
     return NextResponse.json(
       { error: "An unexpected error occurred during AI detection." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

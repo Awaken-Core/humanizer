@@ -1,6 +1,5 @@
 import "server-only";
 
-import { z } from "zod";
 import { getDeepSeekClient, DEEPSEEK_CONFIG } from "@/lib/ai/deepseek.client";
 import {
   GRAMMAR_CHECKER_SYSTEM_PROMPT,
@@ -12,20 +11,8 @@ import {
   type GrammarCheckInput,
   type GrammarCheckResult,
   type GrammarIssue,
-  type GrammarCategory,
 } from "./grammar.types";
-
-interface DeepSeekGrammarResponse {
-  correctedText?: string;
-  score?: number;
-  summary?: string;
-  issues?: Array<{
-    original: string;
-    replacement: string;
-    category: string;
-    explanation: string;
-  }>;
-}
+import { DeepSeekGrammarResponseDto } from "./grammar.dto";
 
 /**
  * Fast deterministic heuristics to detect common mechanical issues
@@ -78,26 +65,11 @@ function runDeterministicGrammarChecks(text: string): GrammarIssue[] {
 }
 
 /**
- * Maps raw string categories to validated GrammarCategory.
- */
-function toCategory(cat: string): GrammarCategory {
-  const normalized = cat.toLowerCase();
-  if (
-    normalized === "grammar" ||
-    normalized === "spelling" ||
-    normalized === "punctuation" ||
-    normalized === "clarity" ||
-    normalized === "style"
-  ) {
-    return normalized;
-  }
-  return "grammar";
-}
-
-/**
  * Main service function to inspect and correct grammar, spelling, and style.
  */
-export async function checkGrammar(input: GrammarCheckInput): Promise<GrammarCheckResult> {
+export async function checkGrammar(
+  input: GrammarCheckInput,
+): Promise<GrammarCheckResult> {
   const start = Date.now();
   const text = input.text.trim();
   const words = text.split(/\s+/).filter((w) => w.length > 0);
@@ -126,21 +98,24 @@ export async function checkGrammar(input: GrammarCheckInput): Promise<GrammarChe
     }
 
     // Clean any accidental markdown code fences
-    const cleanJson = content.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
-    const parsed = JSON.parse(cleanJson) as DeepSeekGrammarResponse;
+    const cleanJson = content
+      .replace(/^```json\s*/i, "")
+      .replace(/```$/i, "")
+      .trim();
+    const parsed = DeepSeekGrammarResponseDto.parse(JSON.parse(cleanJson));
 
     const correctedText = parsed.correctedText || text;
-    const score = typeof parsed.score === "number" ? Math.max(0, Math.min(100, parsed.score)) : 90;
+    const score = parsed.score ?? 90;
     const summary = parsed.summary || "Grammar analysis completed.";
 
     // Locate character offsets for model-reported issues
     const modelIssues: GrammarIssue[] = [];
-    if (Array.isArray(parsed.issues)) {
+    {
       let searchOffset = 0;
       for (const rawIssue of parsed.issues) {
-        if (!rawIssue.original || !rawIssue.replacement) continue;
         const foundIndex = text.indexOf(rawIssue.original, searchOffset);
-        const startChar = foundIndex !== -1 ? foundIndex : text.indexOf(rawIssue.original);
+        const startChar =
+          foundIndex !== -1 ? foundIndex : text.indexOf(rawIssue.original);
         if (startChar !== -1) {
           const endChar = startChar + rawIssue.original.length;
           modelIssues.push({
@@ -148,7 +123,7 @@ export async function checkGrammar(input: GrammarCheckInput): Promise<GrammarChe
             endChar,
             original: rawIssue.original,
             replacement: rawIssue.replacement,
-            category: toCategory(rawIssue.category),
+            category: rawIssue.category,
             explanation: rawIssue.explanation,
           });
           searchOffset = endChar;
@@ -160,7 +135,7 @@ export async function checkGrammar(input: GrammarCheckInput): Promise<GrammarChe
     const allIssues = [...deterministicIssues];
     for (const mi of modelIssues) {
       const exists = allIssues.some(
-        (di) => di.startChar === mi.startChar && di.endChar === mi.endChar
+        (di) => di.startChar === mi.startChar && di.endChar === mi.endChar,
       );
       if (!exists) {
         allIssues.push(mi);
@@ -184,7 +159,9 @@ export async function checkGrammar(input: GrammarCheckInput): Promise<GrammarChe
 
     // Apply deterministic replacements to produce a corrected text fallback
     let fallbackCorrected = text;
-    const sortedIssuesDesc = [...deterministicIssues].sort((a, b) => b.startChar - a.startChar);
+    const sortedIssuesDesc = [...deterministicIssues].sort(
+      (a, b) => b.startChar - a.startChar,
+    );
     for (const issue of sortedIssuesDesc) {
       fallbackCorrected =
         fallbackCorrected.slice(0, issue.startChar) +

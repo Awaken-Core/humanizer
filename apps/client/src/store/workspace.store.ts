@@ -14,33 +14,15 @@ import type {
 } from "@/features/plagiarism/plagiarism.types";
 import type { AiDetectionResult } from "@/features/ai-detector/ai-detector.types";
 import type { GrammarCheckResult } from "@/features/grammar/grammar.types";
+import { AiDetectionResultDto } from "@/features/ai-detector/ai-detector.dto";
+import { GrammarCheckResultDto } from "@/features/grammar/grammar.dto";
+import { PlagiarismResultDto } from "@/features/plagiarism/plagiarism.dto";
+import { getApiErrorMessage, ToolApiResponseDto } from "@/lib/api.dto";
 
 export type WorkspaceMode = ToolMode;
 export type WorkspaceIntensity = ToolIntensity;
 export type { ParaphraserFocus, ParaphraserTone };
 export type WorkspaceServiceRequest = ToolRunRequest;
-
-interface ApiResponse {
-  success?: boolean;
-  data?: {
-    humanizedText?: string;
-    summaryText?: string;
-    paraphrasedText?: string;
-    correctedText?: string;
-    scores?: PlagiarismResult["scores"] | AiDetectionResult["scores"];
-    sources?: PlagiarismResult["sources"];
-    matches?: PlagiarismResult["matches"];
-    highlights?: AiDetectionResult["highlights"];
-    issues?: GrammarCheckResult["issues"];
-    wordCount?: number;
-    sentenceCount?: number;
-    summary?: string;
-    score?: number;
-    processingTimeMs?: number;
-    settings?: PlagiarismSettings;
-  };
-  error?: { message?: string } | string;
-}
 
 interface ToolStore {
   outputText: string;
@@ -79,43 +61,49 @@ export const useToolStore = create<ToolStore>((set, get) => ({
     });
 
     try {
-      const { service, ...payload } = request;
+      const { service, documentId, inputSource, ...payload } = request;
       const tool = getToolDefinition(service);
 
       const response = await fetch(tool.endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(documentId ? { "X-Document-Id": documentId } : {}),
+          ...(inputSource ? { "X-Tool-Input-Source": inputSource } : {}),
+        },
         body: JSON.stringify(payload),
       });
 
-      const data = (await response.json()) as ApiResponse;
+      const data = ToolApiResponseDto.parse(await response.json());
 
       if (!response.ok || !data.success || !data.data) {
-        const errorMsg =
-          typeof data.error === "string"
-            ? data.error
-            : data.error?.message || `Failed to run ${tool.label}.`;
+        const errorMsg = getApiErrorMessage(
+          data.error,
+          `Failed to run ${tool.label}.`,
+        );
         throw new Error(errorMsg);
       }
 
       if (tool.resultKind === "plagiarism") {
+        const result = PlagiarismResultDto.parse(data.data);
         set({
-          plagiarismResult: data.data as unknown as PlagiarismResult,
+          plagiarismResult: result,
           outputText: getToolOutputText(
             tool,
             data.data as Record<string, unknown>,
           ),
         });
       } else if (tool.resultKind === "ai-detection") {
+        const result = AiDetectionResultDto.parse(data.data);
         set({
-          aiDetectorResult: data.data as unknown as AiDetectionResult,
+          aiDetectorResult: result,
           outputText: getToolOutputText(
             tool,
             data.data as Record<string, unknown>,
           ),
         });
       } else if (tool.resultKind === "grammar") {
-        const gResult = data.data as unknown as GrammarCheckResult;
+        const gResult = GrammarCheckResultDto.parse(data.data);
         set({
           grammarResult: gResult,
           outputText: getToolOutputText(

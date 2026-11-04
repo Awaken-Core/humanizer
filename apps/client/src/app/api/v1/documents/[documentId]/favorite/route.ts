@@ -1,13 +1,13 @@
-import mongoose from "mongoose";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { Document } from "@/modal/document";
+import {
+  DocumentIdParamsDto,
+  FavoriteDocumentDto,
+} from "@/features/documents/document.dto";
 import {
   getAuthenticatedDocumentUser,
   serializeDocument,
 } from "@/lib/document.server";
-
-const favoriteSchema = z.object({ isFavorite: z.boolean() });
 
 export async function PATCH(
   request: Request,
@@ -23,8 +23,8 @@ export async function PATCH(
       { status: 401 },
     );
 
-  const { documentId } = await context.params;
-  if (!mongoose.isValidObjectId(documentId))
+  const params = DocumentIdParamsDto.safeParse(await context.params);
+  if (!params.success)
     return NextResponse.json(
       {
         success: false,
@@ -32,6 +32,7 @@ export async function PATCH(
       },
       { status: 404 },
     );
+  const { documentId } = params.data;
 
   let body: unknown;
   try {
@@ -39,7 +40,7 @@ export async function PATCH(
   } catch {
     body = null;
   }
-  const parsed = favoriteSchema.safeParse(body);
+  const parsed = FavoriteDocumentDto.safeParse(body);
   if (!parsed.success)
     return NextResponse.json(
       {

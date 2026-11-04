@@ -1,27 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { comparePairwise } from "@/features/plagiarism/plagiarism.pairwise";
-
-const PairwiseRequestSchema = z.object({
-  docA: z
-    .string()
-    .min(1, "Document A cannot be empty")
-    .max(200_000, "Document A exceeds maximum length of 200,000 characters"),
-  docB: z
-    .string()
-    .min(1, "Document B cannot be empty")
-    .max(200_000, "Document B exceeds maximum length of 200,000 characters"),
-  docAName: z.string().max(100).optional(),
-  docBName: z.string().max(100).optional(),
-  settings: z
-    .object({
-      excludeQuotes: z.boolean().optional(),
-      excludeBibliography: z.boolean().optional(),
-      excludeSmallMatches: z.boolean().optional(),
-      minWordsThreshold: z.number().int().min(3).max(30).optional(),
-    })
-    .optional(),
-});
+import { PairwiseRequestDto } from "@/features/plagiarism/plagiarism-pairwise.dto";
 
 export async function POST(req: NextRequest) {
   try {
@@ -35,12 +14,12 @@ export async function POST(req: NextRequest) {
             message: "Content-Type must be application/json.",
           },
         },
-        { status: 415 }
+        { status: 415 },
       );
     }
 
     const body = await req.json();
-    const parsed = PairwiseRequestSchema.safeParse(body);
+    const parsed = PairwiseRequestDto.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -52,7 +31,7 @@ export async function POST(req: NextRequest) {
             details: parsed.error.issues,
           },
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -70,14 +49,15 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Failed to execute pairwise comparison.";
+      error instanceof Error
+        ? error.message
+        : "Failed to execute pairwise comparison.";
     return NextResponse.json(
       {
         success: false,
         error: { code: "SERVER_ERROR", message },
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

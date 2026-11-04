@@ -1,4 +1,17 @@
 import { create } from "zustand";
+import type { ToolId } from "@/lib/tool-registry";
+import { getApiErrorMessage } from "@/lib/api.dto";
+import { DocumentApiResponseDto } from "@/features/documents/document.dto";
+
+export interface DocumentToolHistoryRecord {
+  id: string;
+  service: ToolId;
+  input: string;
+  output: string;
+  source: "document" | "selection";
+  createdAt: string;
+  failed?: boolean;
+}
 
 export interface BoardDocument {
   id: string;
@@ -26,7 +39,11 @@ export interface SaveDocumentInput {
 
 interface DocumentApiResponse {
   success?: boolean;
-  data?: { document?: BoardDocument; documents?: BoardDocument[] };
+  data?: {
+    document?: BoardDocument;
+    documents?: BoardDocument[];
+    jobs?: DocumentToolHistoryRecord[];
+  };
   error?: { message?: string } | string;
 }
 
@@ -46,20 +63,22 @@ interface BoardStore {
     documentId: string,
     input: SaveDocumentInput,
   ) => Promise<BoardDocument | null>;
-  setFavorite: (documentId: string, isFavorite: boolean) => Promise<void>;
-  setArchived: (documentId: string, isArchived: boolean) => Promise<void>;
+  fetchDocumentToolHistory: (
+    documentId: string,
+  ) => Promise<DocumentToolHistoryRecord[]>;
+  deleteDocumentToolHistory: (documentId: string) => Promise<boolean>;
+  setFavorite: (documentId: string, isFavorite: boolean) => Promise<boolean>;
+  setArchived: (documentId: string, isArchived: boolean) => Promise<boolean>;
   clearError: () => void;
 }
 
 function getErrorMessage(payload: DocumentApiResponse, fallback: string) {
-  return typeof payload.error === "string"
-    ? payload.error
-    : payload.error?.message || fallback;
+  return getApiErrorMessage(payload.error, fallback);
 }
 
 async function readResponse(response: Response): Promise<DocumentApiResponse> {
   try {
-    return (await response.json()) as DocumentApiResponse;
+    return DocumentApiResponseDto.parse(await response.json());
   } catch {
     return {};
   }
@@ -179,8 +198,54 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     }
   },
 
+  fetchDocumentToolHistory: async (documentId) => {
+    try {
+      const response = await fetch(`/api/v1/documents/${documentId}/ai-jobs`, {
+        method: "GET",
+      });
+      const payload = await readResponse(response);
+      if (!response.ok || !payload.success || !payload.data?.jobs) {
+        throw new Error(
+          getErrorMessage(payload, "Unable to load tool history."),
+        );
+      }
+      return payload.data.jobs;
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to load tool history.",
+      });
+      return [];
+    }
+  },
+
+  deleteDocumentToolHistory: async (documentId) => {
+    try {
+      const response = await fetch(`/api/v1/documents/${documentId}/ai-jobs`, {
+        method: "DELETE",
+      });
+      const payload = await readResponse(response);
+      if (!response.ok || !payload.success) {
+        throw new Error(
+          getErrorMessage(payload, "Unable to clear tool history."),
+        );
+      }
+      return true;
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unable to clear tool history.",
+      });
+      return false;
+    }
+  },
+
   setFavorite: async (documentId, isFavorite) => {
-    if (get().mutatingIds.includes(documentId)) return;
+    if (get().mutatingIds.includes(documentId)) return false;
     set((state) => ({
       mutatingIds: [...state.mutatingIds, documentId],
       error: null,
@@ -197,15 +262,21 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
         throw new Error(getErrorMessage(payload, "Unable to update favorite."));
       }
       set((state) => ({
+        activeDocument:
+          state.activeDocument?.id === document.id
+            ? document
+            : state.activeDocument,
         documents: state.documents.map((item) =>
           item.id === document.id ? document : item,
         ),
       }));
+      return true;
     } catch (error) {
       set({
         error:
           error instanceof Error ? error.message : "Unable to update favorite.",
       });
+      return false;
     } finally {
       set((state) => ({
         mutatingIds: state.mutatingIds.filter((id) => id !== documentId),
@@ -214,7 +285,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   },
 
   setArchived: async (documentId, isArchived) => {
-    if (get().mutatingIds.includes(documentId)) return;
+    if (get().mutatingIds.includes(documentId)) return false;
     set((state) => ({
       mutatingIds: [...state.mutatingIds, documentId],
       error: null,
@@ -231,15 +302,21 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
         throw new Error(getErrorMessage(payload, "Unable to update archive."));
       }
       set((state) => ({
+        activeDocument:
+          state.activeDocument?.id === document.id
+            ? document
+            : state.activeDocument,
         documents: state.documents.map((item) =>
           item.id === document.id ? document : item,
         ),
       }));
+      return true;
     } catch (error) {
       set({
         error:
           error instanceof Error ? error.message : "Unable to update archive.",
       });
+      return false;
     } finally {
       set((state) => ({
         mutatingIds: state.mutatingIds.filter((id) => id !== documentId),

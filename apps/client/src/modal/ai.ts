@@ -1,16 +1,37 @@
 import mongoose, { Schema } from "mongoose";
 
 export const AiJobTypes = [
-  "AI_DETECTOR", "AI_HUMANIZER", "AI_SUMMARIZER", "AI_IMPROVER",
-  "PLAGIARISM_CHECKER", "GRAMMAR_CHECKER", "ACCURACY_CHECKER", "PARAPHRASER",
+  "AI_DETECTOR",
+  "AI_HUMANIZER",
+  "AI_SUMMARIZER",
+  "AI_IMPROVER",
+  "PLAGIARISM_CHECKER",
+  "GRAMMAR_CHECKER",
+  "ACCURACY_CHECKER",
+  "PARAPHRASER",
 ] as const;
 export const AiJobStatuses = [
-  "PENDING", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED",
+  "PENDING",
+  "PROCESSING",
+  "COMPLETED",
+  "FAILED",
+  "CANCELLED",
 ] as const;
 export const AiJobSources = ["WORKSPACE", "BOARD"] as const;
-export const AiJobModes = ["natural", "academic", "professional", "casual"] as const;
+export const AiJobModes = [
+  "natural",
+  "academic",
+  "professional",
+  "casual",
+] as const;
 export const AiJobIntensities = ["low", "medium", "high"] as const;
-export const AiJobTones = ["standard", "formal", "creative", "shorten", "expand"] as const;
+export const AiJobTones = [
+  "standard",
+  "formal",
+  "creative",
+  "shorten",
+  "expand",
+] as const;
 export const AiJobFocuses = ["vocabulary", "structure", "both"] as const;
 
 const AiJobSchema = new Schema(
@@ -115,11 +136,12 @@ const AiJobSchema = new Schema(
     startedAt: Date,
     completedAt: Date,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 AiJobSchema.index({ userId: 1, createdAt: -1 });
 AiJobSchema.index({ anonymousId: 1, createdAt: -1 });
+AiJobSchema.index({ documentId: 1, source: 1, createdAt: -1 });
 
 AiJobSchema.index(
   { userId: 1, idempotencyKey: 1 },
@@ -129,7 +151,7 @@ AiJobSchema.index(
       userId: { $type: "string" },
       idempotencyKey: { $type: "string" },
     },
-  }
+  },
 );
 
 AiJobSchema.index(
@@ -140,9 +162,8 @@ AiJobSchema.index(
       anonymousId: { $type: "string" },
       idempotencyKey: { $type: "string" },
     },
-  }
+  },
 );
 
 export const AiJob =
-  mongoose.models.AiJob ||
-  mongoose.model("AiJob", AiJobSchema);
+  mongoose.models.AiJob || mongoose.model("AiJob", AiJobSchema);

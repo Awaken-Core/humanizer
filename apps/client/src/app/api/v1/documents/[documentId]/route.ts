@@ -1,25 +1,13 @@
-import mongoose from "mongoose";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { Document, DocumentVersion } from "@/modal/document";
+import {
+  DocumentIdParamsDto,
+  UpdateDocumentDto,
+} from "@/features/documents/document.dto";
 import {
   getAuthenticatedDocumentUser,
   serializeDocument,
 } from "@/lib/document.server";
-
-const updateDocumentSchema = z.object({
-  title: z.string().trim().min(1).max(120),
-  content: z
-    .object({
-      type: z.literal("doc"),
-      content: z.array(z.unknown()).optional(),
-    })
-    .passthrough(),
-  plainText: z.string().max(1_000_000),
-  wordCount: z.number().int().nonnegative(),
-  characterCount: z.number().int().nonnegative(),
-  expectedVersion: z.number().int().positive(),
-});
 
 export async function GET(
   _request: Request,
@@ -36,8 +24,8 @@ export async function GET(
         { status: 401 },
       );
 
-    const { documentId } = await context.params;
-    if (!mongoose.isValidObjectId(documentId))
+    const params = DocumentIdParamsDto.safeParse(await context.params);
+    if (!params.success)
       return NextResponse.json(
         {
           success: false,
@@ -45,6 +33,7 @@ export async function GET(
         },
         { status: 404 },
       );
+    const { documentId } = params.data;
 
     const document = await Document.findOne({
       _id: documentId,
@@ -97,8 +86,8 @@ export async function PATCH(
       );
     }
 
-    const { documentId } = await context.params;
-    if (!mongoose.isValidObjectId(documentId)) {
+    const params = DocumentIdParamsDto.safeParse(await context.params);
+    if (!params.success) {
       return NextResponse.json(
         {
           success: false,
@@ -107,6 +96,7 @@ export async function PATCH(
         { status: 404 },
       );
     }
+    const { documentId } = params.data;
 
     let body: unknown;
     try {
@@ -121,7 +111,7 @@ export async function PATCH(
       );
     }
 
-    const parsed = updateDocumentSchema.safeParse(body);
+    const parsed = UpdateDocumentDto.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         {

@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/ratelimit";
-import {
-  checkPlagiarism,
-  createPlagiarismInputSchema,
-  PlagiarismError,
-} from "@/features/plagiarism";
+import { checkPlagiarism, PlagiarismError } from "@/features/plagiarism";
+import { createPlagiarismInputSchema } from "@/features/plagiarism/plagiarism.dto";
 import {
   ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
   AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
-} from "@/features/humanizer/humanizer.schema";
+} from "@/features/humanizer/humanizer.dto";
 import {
   completeAiJob,
   failAiJob,
@@ -38,7 +35,7 @@ export async function POST(req: NextRequest) {
             message: "Content-Type must be application/json.",
           },
         },
-        { status: 415 }
+        { status: 415 },
       );
     }
 
@@ -55,7 +52,7 @@ export async function POST(req: NextRequest) {
             message: "Request body contains invalid or malformed JSON.",
           },
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -65,7 +62,8 @@ export async function POST(req: NextRequest) {
       ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
       : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
 
-    const parseResult = createPlagiarismInputSchema(maxInputLength).safeParse(body);
+    const parseResult =
+      createPlagiarismInputSchema(maxInputLength).safeParse(body);
     if (!parseResult.success) {
       const issue = parseResult.error.issues[0];
       const message = issue?.message || "Invalid input parameters.";
@@ -81,14 +79,14 @@ export async function POST(req: NextRequest) {
             message,
           },
         },
-        { status: isLengthError ? 413 : 400 }
+        { status: isLengthError ? 413 : 400 },
       );
     }
 
     // 4. Rate limiting
     const rateLimit = await checkRateLimit(
       requestContext.rateLimitIdentifier,
-      requestContext.isAuthenticated
+      requestContext.isAuthenticated,
     );
 
     if (rateLimit.serviceUnavailable) {
@@ -101,14 +99,14 @@ export async function POST(req: NextRequest) {
               "Rate limiting service is temporarily unavailable. Request blocked for system protection.",
           },
         },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
     if (!rateLimit.success) {
       const retryAfterSec = Math.max(
         1,
-        Math.ceil((rateLimit.reset - Date.now()) / 1000)
+        Math.ceil((rateLimit.reset - Date.now()) / 1000),
       );
       return NextResponse.json(
         {
@@ -126,7 +124,7 @@ export async function POST(req: NextRequest) {
             "X-RateLimit-Remaining": String(rateLimit.remaining),
             "X-RateLimit-Reset": String(rateLimit.reset),
           },
-        }
+        },
       );
     }
 
@@ -152,7 +150,7 @@ export async function POST(req: NextRequest) {
       {
         model: "retrieval+scoring",
         durationMs: result.processingTimeMs,
-      }
+      },
     );
 
     // 8. Persist plagiarism report to MongoDB
@@ -219,7 +217,7 @@ export async function POST(req: NextRequest) {
           "X-RateLimit-Limit": String(rateLimit.limit),
           "X-RateLimit-Remaining": String(rateLimit.remaining),
         },
-      }
+      },
     );
   } catch (error: unknown) {
     if (jobId) await failAiJob(jobId, error);
@@ -234,7 +232,7 @@ export async function POST(req: NextRequest) {
             message: error.message,
           },
         },
-        { status: error.status }
+        { status: error.status },
       );
     }
 
@@ -253,7 +251,7 @@ export async function POST(req: NextRequest) {
               "The plagiarism check timed out. Please try again with shorter text.",
           },
         },
-        { status: 504 }
+        { status: 504 },
       );
     }
 
@@ -264,10 +262,11 @@ export async function POST(req: NextRequest) {
         success: false,
         error: {
           code: "INTERNAL_SERVER_ERROR",
-          message: "An unexpected error occurred while processing your request.",
+          message:
+            "An unexpected error occurred while processing your request.",
         },
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

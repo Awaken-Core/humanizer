@@ -9,11 +9,33 @@ import TaskList from "@tiptap/extension-task-list";
 import TextAlign from "@tiptap/extension-text-align";
 import { TextStyleKit } from "@tiptap/extension-text-style";
 import Typography from "@tiptap/extension-typography";
+import type { JSONContent } from "@tiptap/core";
 
 export const EMPTY_TIPTAP_DOCUMENT = {
   type: "doc",
   content: [{ type: "paragraph" }],
 };
+
+export function plainTextToTiptapDocument(text: string): JSONContent {
+  const blocks = text.trim().split(/\n{2,}/);
+  if (!blocks.length || !text.trim()) return EMPTY_TIPTAP_DOCUMENT;
+
+  return {
+    type: "doc",
+    content: blocks.map((block) => {
+      const lines = block.split("\n");
+      const content: JSONContent[] = [];
+      lines.forEach((line, index) => {
+        if (line) content.push({ type: "text", text: line });
+        if (index < lines.length - 1) content.push({ type: "hardBreak" });
+      });
+      return {
+        type: "paragraph",
+        content: content.length ? content : undefined,
+      };
+    }),
+  };
+}
 
 export function createDocumentExtensions(withEditorUtilities = true) {
   return [

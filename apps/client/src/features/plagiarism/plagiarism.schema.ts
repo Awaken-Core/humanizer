@@ -24,34 +24,38 @@ export const DEFAULT_PLAGIARISM_SETTINGS: PlagiarismSettings = {
 // ---------------------------------------------------------------------------
 
 /** Validates and coerces caller-supplied plagiarism settings. */
-export const PlagiarismSettingsSchema = z.object({
-  excludeQuotes: z.boolean().default(true),
-  excludeBibliography: z.boolean().default(true),
-  excludeSmallMatches: z.boolean().default(true),
-  minWordsThreshold: z.number().int().min(1).max(50).default(8),
-});
+export const PlagiarismSettingsSchema = z
+  .object({
+    excludeQuotes: z.boolean().default(true),
+    excludeBibliography: z.boolean().default(true),
+    excludeSmallMatches: z.boolean().default(true),
+    minWordsThreshold: z.number().int().min(1).max(50).default(8),
+  })
+  .strict();
 
 /**
  * Factory that produces a Zod input schema enforcing a caller-specific text length cap.
  * @param maxLength - Maximum number of characters allowed in the text field.
  */
 export function createPlagiarismInputSchema(maxLength: number) {
-  return z.object({
-    text: z
-      .string({ error: "The 'text' field must be a string." })
-      .trim()
-      .min(1, "Input text cannot be empty or contain only whitespace.")
-      .max(
-        maxLength,
-        `Input text exceeds the maximum allowed limit of ${maxLength.toLocaleString()} characters.`
-      ),
-    settings: PlagiarismSettingsSchema.partial().optional(),
-  });
+  return z
+    .object({
+      text: z
+        .string({ error: "The 'text' field must be a string." })
+        .trim()
+        .min(1, "Input text cannot be empty or contain only whitespace.")
+        .max(
+          maxLength,
+          `Input text exceeds the maximum allowed limit of ${maxLength.toLocaleString()} characters.`,
+        ),
+      settings: PlagiarismSettingsSchema.partial().optional(),
+    })
+    .strict();
 }
 
 /** Default input schema using the authenticated character limit. */
 export const PlagiarismInputSchema = createPlagiarismInputSchema(
-  AUTHENTICATED_MAX_PLAGIARISM_LENGTH
+  AUTHENTICATED_MAX_PLAGIARISM_LENGTH,
 );
 
 // ---------------------------------------------------------------------------
@@ -68,7 +72,7 @@ export class PlagiarismError extends Error {
     message: string,
     code = "PLAGIARISM_ERROR",
     status = 500,
-    causeDetails?: unknown
+    causeDetails?: unknown,
   ) {
     super(message);
     this.name = "PlagiarismError";

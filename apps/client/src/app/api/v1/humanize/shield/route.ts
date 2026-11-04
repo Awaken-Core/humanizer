@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { shieldCitations } from "@/features/humanizer/citation-shield";
-
-const ShieldRequestSchema = z.object({
-  text: z.string().min(1, "Text cannot be empty").max(100_000, "Text exceeds maximum limit"),
-  style: z.enum(["latex", "ieee", "apa"]).default("latex"),
-  discipline: z
-    .enum(["computer-science", "engineering", "mathematics", "finance", "medicine", "general"])
-    .default("computer-science"),
-  maxCitations: z.number().int().positive().optional(),
-  densityThreshold: z.number().int().min(3).max(15).optional(),
-});
+import { CitationShieldRequestDto } from "@/features/humanizer/citation-shield.dto";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,14 +9,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: { code: "UNSUPPORTED_MEDIA_TYPE", message: "Content-Type must be application/json." },
+          error: {
+            code: "UNSUPPORTED_MEDIA_TYPE",
+            message: "Content-Type must be application/json.",
+          },
         },
-        { status: 415 }
+        { status: 415 },
       );
     }
 
     const body = await req.json();
-    const parsed = ShieldRequestSchema.safeParse(body);
+    const parsed = CitationShieldRequestDto.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -38,7 +31,7 @@ export async function POST(req: NextRequest) {
             details: parsed.error.issues,
           },
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -54,14 +47,16 @@ export async function POST(req: NextRequest) {
       data: result,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to execute citation shielding.";
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to execute citation shielding.";
     return NextResponse.json(
       {
         success: false,
         error: { code: "SERVER_ERROR", message },
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

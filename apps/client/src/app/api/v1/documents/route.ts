@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { Document, DocumentVersion } from "@/modal/document";
+import { CreateDocumentDto } from "@/features/documents/document.dto";
 import {
   getAuthenticatedDocumentUser,
   serializeDocument,
 } from "@/lib/document.server";
-
-const createDocumentSchema = z.object({
-  title: z.string().trim().min(1).max(120).optional(),
-});
 
 export async function GET() {
   try {
@@ -68,7 +64,7 @@ export async function POST(request: Request) {
       body = {};
     }
 
-    const parsed = createDocumentSchema.safeParse(body);
+    const parsed = CreateDocumentDto.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         {

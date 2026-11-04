@@ -39,6 +39,8 @@ import {
   createDocumentExtensions,
   EMPTY_TIPTAP_DOCUMENT,
 } from "./tiptap-extensions";
+import { getToolsForContext, type ToolId } from "@/lib/tool-registry";
+import { DOCUMENT_TOOL_ICONS } from "./document-tool-icons";
 import styles from "./rich-document.module.css";
 
 interface RichTextEditorProps {
@@ -50,6 +52,7 @@ interface RichTextEditorProps {
     characters: number;
   }) => void;
   editable?: boolean;
+  onRunSelectionTool?: (service: ToolId, text: string) => void;
 }
 
 type MenuPosition = {
@@ -62,6 +65,7 @@ export function RichTextEditor({
   content,
   onChange,
   editable = true,
+  onRunSelectionTool,
 }: RichTextEditorProps) {
   const [menu, setMenu] = useState<MenuPosition>(null);
   const [textStyleMenuOpen, setTextStyleMenuOpen] = useState(false);
@@ -70,6 +74,11 @@ export function RichTextEditor({
     bottom: 0,
   });
   const [blockPosition, setBlockPosition] = useState(0);
+  const [selectionMenu, setSelectionMenu] = useState<{
+    left: number;
+    top: number;
+    text: string;
+  } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const textStyleControlRef = useRef<HTMLDivElement>(null);
   const textStyleMenuRef = useRef<HTMLDivElement>(null);
@@ -164,8 +173,29 @@ export function RichTextEditor({
           characters: current.storage.characterCount.characters(),
         });
       },
+      onSelectionUpdate: ({ editor: current }) => {
+        const { from, to } = current.state.selection;
+        if (from === to || !onRunSelectionTool) {
+          setSelectionMenu(null);
+          return;
+        }
+
+        const text = current.state.doc.textBetween(from, to, " ").trim();
+        if (!text) {
+          setSelectionMenu(null);
+          return;
+        }
+
+        const start = current.view.coordsAtPos(from);
+        const end = current.view.coordsAtPos(to);
+        setSelectionMenu({
+          left: Math.max(12, (start.left + end.right) / 2),
+          top: Math.max(start.bottom, end.bottom) + 9,
+          text,
+        });
+      },
     },
-    [editable],
+    [editable, onRunSelectionTool],
   );
 
   const state = useEditorState({
@@ -545,6 +575,40 @@ export function RichTextEditor({
               <Heading3 size={17} />
               <span>Heading 3</span>
             </button>
+          </div>,
+          document.body,
+        )}
+
+      {selectionMenu &&
+        onRunSelectionTool &&
+        createPortal(
+          <div
+            className={styles.selectionTools}
+            style={{ left: selectionMenu.left, top: selectionMenu.top }}
+            role="menu"
+            aria-label="Run a writing tool on selection"
+            onPointerDown={(event) => event.preventDefault()}
+          >
+            <div>
+              {getToolsForContext("document").map((tool) => {
+                const ToolIcon = DOCUMENT_TOOL_ICONS[tool.id];
+                return (
+                  <button
+                    key={tool.id}
+                    type="button"
+                    role="menuitem"
+                    aria-label={tool.label}
+                    data-tooltip={tool.label}
+                    onClick={() => {
+                      onRunSelectionTool(tool.id, selectionMenu.text);
+                      setSelectionMenu(null);
+                    }}
+                  >
+                    <ToolIcon size={16} />
+                  </button>
+                );
+              })}
+            </div>
           </div>,
           document.body,
         )}
