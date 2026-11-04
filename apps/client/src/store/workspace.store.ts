@@ -1,40 +1,24 @@
 import { create } from "zustand";
-import { ServiceLabels, type Service } from "@/lib/constants";
-import type { PlagiarismResult, PlagiarismSettings } from "@/features/plagiarism/plagiarism.types";
+import {
+  getToolDefinition,
+  getToolOutputText,
+  type ParaphraserFocus,
+  type ParaphraserTone,
+  type ToolIntensity,
+  type ToolMode,
+  type ToolRunRequest,
+} from "@/lib/tool-registry";
+import type {
+  PlagiarismResult,
+  PlagiarismSettings,
+} from "@/features/plagiarism/plagiarism.types";
 import type { AiDetectionResult } from "@/features/ai-detector/ai-detector.types";
 import type { GrammarCheckResult } from "@/features/grammar/grammar.types";
 
-export type WorkspaceMode = "natural" | "academic" | "professional" | "casual";
-export type WorkspaceIntensity = "low" | "medium" | "high";
-export type ParaphraserTone = "standard" | "formal" | "creative" | "shorten" | "expand";
-export type ParaphraserFocus = "vocabulary" | "structure" | "both";
-
-export type WorkspaceServiceRequest =
-  | {
-      service: "humanizer" | "summarizer";
-      text: string;
-      mode: WorkspaceMode;
-      intensity: WorkspaceIntensity;
-    }
-  | {
-      service: "paraphraser";
-      text: string;
-      tone: ParaphraserTone;
-      focus: ParaphraserFocus;
-    }
-  | {
-      service: "plagiarism-checker";
-      text: string;
-      settings?: Partial<PlagiarismSettings>;
-    }
-  | {
-      service: "ai-detector";
-      text: string;
-    }
-  | {
-      service: "grammar-checker";
-      text: string;
-    };
+export type WorkspaceMode = ToolMode;
+export type WorkspaceIntensity = ToolIntensity;
+export type { ParaphraserFocus, ParaphraserTone };
+export type WorkspaceServiceRequest = ToolRunRequest;
 
 interface ApiResponse {
   success?: boolean;
@@ -58,29 +42,24 @@ interface ApiResponse {
   error?: { message?: string } | string;
 }
 
-interface WorkspaceStore {
+interface ToolStore {
   outputText: string;
   plagiarismResult: PlagiarismResult | null;
   aiDetectorResult: AiDetectionResult | null;
   grammarResult: GrammarCheckResult | null;
   isLoading: boolean;
   error: string | null;
+  runTool: (
+    request: WorkspaceServiceRequest,
+  ) => Promise<Record<string, unknown> | null>;
+  /** @deprecated Use runTool. */
   runService: (request: WorkspaceServiceRequest) => Promise<void>;
   toggleSourceExclusion: (sourceUrl: string) => void;
   clearResult: () => void;
   setError: (message: string) => void;
 }
 
-const SERVICE_ENDPOINTS: Record<WorkspaceServiceRequest["service"], string> = {
-  humanizer: "/api/v1/humanize",
-  summarizer: "/api/v1/summarize",
-  paraphraser: "/api/v1/paraphrase",
-  "plagiarism-checker": "/api/v1/plagiarism",
-  "ai-detector": "/api/v1/ai-detect",
-  "grammar-checker": "/api/v1/grammar",
-};
-
-export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
+export const useToolStore = create<ToolStore>((set, get) => ({
   outputText: "",
   plagiarismResult: null,
   aiDetectorResult: null,
@@ -88,8 +67,8 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   isLoading: false,
   error: null,
 
-  runService: async (request) => {
-    if (get().isLoading) return;
+  runTool: async (request) => {
+    if (get().isLoading) return null;
     set({
       isLoading: true,
       error: null,
@@ -101,12 +80,9 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
     try {
       const { service, ...payload } = request;
-      const endpoint = SERVICE_ENDPOINTS[service];
-      if (!endpoint) {
-        throw new Error(`Service "${service}" is not supported yet.`);
-      }
+      const tool = getToolDefinition(service);
 
-      const response = await fetch(endpoint, {
+      const response = await fetch(tool.endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -118,35 +94,44 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         const errorMsg =
           typeof data.error === "string"
             ? data.error
-            : data.error?.message ||
-              `Failed to run ${ServiceLabels[service as Service] || service}.`;
+            : data.error?.message || `Failed to run ${tool.label}.`;
         throw new Error(errorMsg);
       }
 
-      if (service === "plagiarism-checker") {
+      if (tool.resultKind === "plagiarism") {
         set({
           plagiarismResult: data.data as unknown as PlagiarismResult,
-          outputText: data.data.summary || "",
+          outputText: getToolOutputText(
+            tool,
+            data.data as Record<string, unknown>,
+          ),
         });
-      } else if (service === "ai-detector") {
+      } else if (tool.resultKind === "ai-detection") {
         set({
           aiDetectorResult: data.data as unknown as AiDetectionResult,
-          outputText: data.data.summary || "",
+          outputText: getToolOutputText(
+            tool,
+            data.data as Record<string, unknown>,
+          ),
         });
-      } else if (service === "grammar-checker") {
+      } else if (tool.resultKind === "grammar") {
         const gResult = data.data as unknown as GrammarCheckResult;
         set({
           grammarResult: gResult,
-          outputText: gResult.correctedText || "",
+          outputText: getToolOutputText(
+            tool,
+            data.data as Record<string, unknown>,
+          ),
         });
       } else {
-        const textResult =
-          data.data.humanizedText ??
-          data.data.summaryText ??
-          data.data.paraphrasedText ??
-          "";
-        set({ outputText: textResult });
+        set({
+          outputText: getToolOutputText(
+            tool,
+            data.data as Record<string, unknown>,
+          ),
+        });
       }
+      return data.data as Record<string, unknown>;
     } catch (error) {
       set({
         error:
@@ -154,9 +139,14 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
             ? error.message
             : "An unexpected error occurred.",
       });
+      return null;
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  runService: async (request) => {
+    await get().runTool(request);
   },
 
   toggleSourceExclusion: (sourceUrl: string) => {
@@ -164,7 +154,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     if (!current) return;
 
     const updatedSources = current.sources.map((s) =>
-      s.url === sourceUrl ? { ...s, isExcluded: !s.isExcluded } : s
+      s.url === sourceUrl ? { ...s, isExcluded: !s.isExcluded } : s,
     );
 
     const activeSources = updatedSources.filter((s) => !s.isExcluded);
@@ -182,7 +172,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
     const overallSimilarity = Math.min(
       100,
-      Math.round((matchedWords / totalWords) * 100)
+      Math.round((matchedWords / totalWords) * 100),
     );
 
     set({
@@ -217,3 +207,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       error: message,
     }),
 }));
+
+/** @deprecated Prefer useToolStore for new workspace and document integrations. */
+export const useWorkspaceStore = useToolStore;

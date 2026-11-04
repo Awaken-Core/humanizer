@@ -7,7 +7,7 @@ import { ModeToggle } from "@/components/theme-toggle";
 import { HumanizeButton } from "@/components/ui/humanize-button";
 import { useSession } from "@/lib/auth-client";
 import {
-  useWorkspaceStore,
+  useToolStore,
   type ParaphraserFocus,
   type ParaphraserTone,
   type WorkspaceIntensity,
@@ -20,12 +20,7 @@ import {
 import { PlagiarismView } from "@/components/workspace/plagiarism-view";
 import { AiDetectorView } from "@/components/workspace/ai-detector-view";
 import { GrammarView } from "@/components/workspace/grammar-view";
-import {
-  ServiceActionLabels,
-  ServiceLabels,
-  Services,
-  type Service,
-} from "@/lib/constants";
+import { getToolDefinition, TOOL_IDS, type ToolId } from "@/lib/tool-registry";
 import {
   Sparkles,
   Copy,
@@ -97,7 +92,7 @@ interface UploadedFileState {
   zipData?: any;
 }
 
-const SERVICE_SAMPLES: Record<Service, ServiceSample[]> = {
+const SERVICE_SAMPLES: Record<ToolId, ServiceSample[]> = {
   humanizer: [
     {
       label: "AI Essay Draft",
@@ -119,7 +114,7 @@ const SERVICE_SAMPLES: Record<Service, ServiceSample[]> = {
     },
     {
       label: "Quoted Excerpt",
-      text: "According to research published by the International Energy Agency, \"Global investment in clean energy is on course to rise to 1.8 trillion USD in 2023, with solar leading the way.\" However, transmission grid modernizations remain critical to unlock full capacity.",
+      text: 'According to research published by the International Energy Agency, "Global investment in clean energy is on course to rise to 1.8 trillion USD in 2023, with solar leading the way." However, transmission grid modernizations remain critical to unlock full capacity.',
     },
   ],
   "ai-detector": [
@@ -166,7 +161,7 @@ const SERVICE_SAMPLES: Record<Service, ServiceSample[]> = {
   ],
 };
 
-const SERVICE_ICONS: Record<Service, React.ComponentType<{ size?: number }>> = {
+const SERVICE_ICONS: Record<ToolId, React.ComponentType<{ size?: number }>> = {
   humanizer: Fingerprint,
   "plagiarism-checker": ShieldAlert,
   "ai-detector": ScanText,
@@ -189,23 +184,25 @@ function triggerDownload(blob: Blob, filename: string) {
 export default function HumanizerPage() {
   const { data: session } = useSession();
   const [inputText, setInputText] = useState("");
-  const outputText = useWorkspaceStore((state) => state.outputText);
-  const plagiarismResult = useWorkspaceStore((state) => state.plagiarismResult);
-  const aiDetectorResult = useWorkspaceStore((state) => state.aiDetectorResult);
-  const grammarResult = useWorkspaceStore((state) => state.grammarResult);
-  const toggleSourceExclusion = useWorkspaceStore((state) => state.toggleSourceExclusion);
-  const isLoading = useWorkspaceStore((state) => state.isLoading);
-  const error = useWorkspaceStore((state) => state.error);
-  const runService = useWorkspaceStore((state) => state.runService);
-  const clearResult = useWorkspaceStore((state) => state.clearResult);
-  const setStoreError = useWorkspaceStore((state) => state.setError);
+  const outputText = useToolStore((state) => state.outputText);
+  const plagiarismResult = useToolStore((state) => state.plagiarismResult);
+  const aiDetectorResult = useToolStore((state) => state.aiDetectorResult);
+  const grammarResult = useToolStore((state) => state.grammarResult);
+  const toggleSourceExclusion = useToolStore(
+    (state) => state.toggleSourceExclusion,
+  );
+  const isLoading = useToolStore((state) => state.isLoading);
+  const error = useToolStore((state) => state.error);
+  const runTool = useToolStore((state) => state.runTool);
+  const clearResult = useToolStore((state) => state.clearResult);
+  const setStoreError = useToolStore((state) => state.setError);
 
   const [mode, setMode] = useState<ModeType>("natural");
   const [intensity, setIntensity] = useState<IntensityType>("medium");
   const [tone, setTone] = useState<ToneType>("standard");
   const [focus, setFocus] = useState<FocusType>("both");
   const [copied, setCopied] = useState(false);
-  const [selectedService, setSelectedService] = useState<Service>(Services[0]);
+  const [selectedService, setSelectedService] = useState<ToolId>(TOOL_IDS[0]);
 
   // Plagiarism-specific settings
   const [excludeQuotes, setExcludeQuotes] = useState(true);
@@ -214,15 +211,20 @@ export default function HumanizerPage() {
 
   // File Upload & AST State
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadedFile, setUploadedFile] = useState<UploadedFileState | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<UploadedFileState | null>(
+    null,
+  );
   const [isFileParsing, setIsFileParsing] = useState(false);
 
   // Citation Shield State
   const [isCitationShieldOpen, setIsCitationShieldOpen] = useState(false);
   const [citationStyle, setCitationStyle] = useState<CitationStyle>("latex");
-  const [citationDiscipline, setCitationDiscipline] = useState<AcademicDiscipline>("computer-science");
+  const [citationDiscipline, setCitationDiscipline] =
+    useState<AcademicDiscipline>("computer-science");
   const [bibtexPackage, setBibtexPackage] = useState<string | null>(null);
-  const [shieldSuccessMessage, setShieldSuccessMessage] = useState<string | null>(null);
+  const [shieldSuccessMessage, setShieldSuccessMessage] = useState<
+    string | null
+  >(null);
 
   const characterCount = inputText.length;
 
@@ -232,6 +234,7 @@ export default function HumanizerPage() {
 
   const exceedsInputLimit = characterCount > maxInputLength;
   const currentSamples = SERVICE_SAMPLES[selectedService] || [];
+  const selectedTool = getToolDefinition(selectedService);
 
   const handleApplySample = (sample: ServiceSample) => {
     setInputText(sample.text);
@@ -247,7 +250,7 @@ export default function HumanizerPage() {
     if (!inputText.trim() || isLoading || exceedsInputLimit) return;
 
     if (selectedService === "plagiarism-checker") {
-      await runService({
+      await runTool({
         service: "plagiarism-checker",
         text: inputText,
         settings: {
@@ -261,10 +264,12 @@ export default function HumanizerPage() {
 
     if (selectedService === "ai-detector") {
       if (inputText.trim().length < 50) {
-        setStoreError("Please provide at least 50 characters for accurate AI detection.");
+        setStoreError(
+          "Please provide at least 50 characters for accurate AI detection.",
+        );
         return;
       }
-      await runService({
+      await runTool({
         service: "ai-detector",
         text: inputText,
       });
@@ -272,7 +277,7 @@ export default function HumanizerPage() {
     }
 
     if (selectedService === "grammar-checker") {
-      await runService({
+      await runTool({
         service: "grammar-checker",
         text: inputText,
       });
@@ -280,16 +285,28 @@ export default function HumanizerPage() {
     }
 
     if (selectedService === "paraphraser") {
-      await runService({ service: selectedService, text: inputText, tone, focus });
+      await runTool({
+        service: selectedService,
+        text: inputText,
+        tone,
+        focus,
+      });
       return;
     }
 
     if (selectedService === "humanizer" || selectedService === "summarizer") {
-      await runService({ service: selectedService, text: inputText, mode, intensity });
+      await runTool({
+        service: selectedService,
+        text: inputText,
+        mode,
+        intensity,
+      });
       return;
     }
 
-    setStoreError(`${ServiceLabels[selectedService]} is currently under active development.`);
+    setStoreError(
+      `${selectedTool.label} is currently under active development.`,
+    );
   };
 
   const handleCopy = async () => {
@@ -352,7 +369,9 @@ export default function HumanizerPage() {
         const buffer = await file.arrayBuffer();
         const zipResult = await unpackBatchZip(buffer);
         if (zipResult.entries.length === 0) {
-          throw new Error("No supported documents (.docx, .tex, .md, .txt) found inside ZIP.");
+          throw new Error(
+            "No supported documents (.docx, .tex, .md, .txt) found inside ZIP.",
+          );
         }
         setUploadedFile({
           name: file.name,
@@ -370,10 +389,16 @@ export default function HumanizerPage() {
         setInputText(text);
         clearResult();
       } else {
-        throw new Error("Unsupported format. Please upload .docx, .tex, .md, .txt, or .zip.");
+        throw new Error(
+          "Unsupported format. Please upload .docx, .tex, .md, .txt, or .zip.",
+        );
       }
     } catch (err) {
-      setStoreError(err instanceof Error ? err.message : "Failed to parse uploaded document.");
+      setStoreError(
+        err instanceof Error
+          ? err.message
+          : "Failed to parse uploaded document.",
+      );
     } finally {
       setIsFileParsing(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -387,29 +412,61 @@ export default function HumanizerPage() {
     try {
       if (uploadedFile?.format === "docx" && uploadedFile.docxResult) {
         // Reconstruct Word .docx preserving paragraph formatting & XML runs
-        const paragraphs = outputText.split(/\n\s*\n/).filter((p) => p.trim().length > 0);
-        const docxBytes = await reconstructDocx(uploadedFile.docxResult.zip, paragraphs);
+        const paragraphs = outputText
+          .split(/\n\s*\n/)
+          .filter((p) => p.trim().length > 0);
+        const docxBytes = await reconstructDocx(
+          uploadedFile.docxResult.zip,
+          paragraphs,
+        );
         triggerDownload(
           new Blob([docxBytes as any], {
             type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
           }),
-          `Humanized_${uploadedFile.name}`
+          `Humanized_${uploadedFile.name}`,
         );
-      } else if (uploadedFile?.format === "latex" && uploadedFile.latexPlaceholders) {
+      } else if (
+        uploadedFile?.format === "latex" &&
+        uploadedFile.latexPlaceholders
+      ) {
         // Unmask LaTeX preserving math formulas, equations, and citations
-        const restoredTex = unmaskLatex(outputText, uploadedFile.latexPlaceholders);
-        triggerDownload(new Blob([restoredTex], { type: "text/x-tex" }), `Humanized_${uploadedFile.name}`);
-      } else if (uploadedFile?.format === "markdown" && uploadedFile.markdownPlaceholders) {
+        const restoredTex = unmaskLatex(
+          outputText,
+          uploadedFile.latexPlaceholders,
+        );
+        triggerDownload(
+          new Blob([restoredTex], { type: "text/x-tex" }),
+          `Humanized_${uploadedFile.name}`,
+        );
+      } else if (
+        uploadedFile?.format === "markdown" &&
+        uploadedFile.markdownPlaceholders
+      ) {
         // Unmask Markdown preserving code blocks and tables
-        const restoredMd = unmaskMarkdown(outputText, uploadedFile.markdownPlaceholders);
-        triggerDownload(new Blob([restoredMd], { type: "text/markdown" }), `Humanized_${uploadedFile.name}`);
+        const restoredMd = unmaskMarkdown(
+          outputText,
+          uploadedFile.markdownPlaceholders,
+        );
+        triggerDownload(
+          new Blob([restoredMd], { type: "text/markdown" }),
+          `Humanized_${uploadedFile.name}`,
+        );
       } else {
         // Standard text download
-        const outName = uploadedFile ? `Humanized_${uploadedFile.name}.txt` : "Humanized_Document.txt";
-        triggerDownload(new Blob([outputText], { type: "text/plain" }), outName);
+        const outName = uploadedFile
+          ? `Humanized_${uploadedFile.name}.txt`
+          : "Humanized_Document.txt";
+        triggerDownload(
+          new Blob([outputText], { type: "text/plain" }),
+          outName,
+        );
       }
     } catch (err) {
-      setStoreError(err instanceof Error ? err.message : "Failed to reconstruct and export document.");
+      setStoreError(
+        err instanceof Error
+          ? err.message
+          : "Failed to reconstruct and export document.",
+      );
     }
   };
 
@@ -425,7 +482,7 @@ export default function HumanizerPage() {
     setInputText(res.shieldedText);
     setBibtexPackage(res.bibtexPackage);
     setShieldSuccessMessage(
-      `Citation Shield Applied: Injected ${res.injectedCitations.length} reference anchor(s). Broken Turnitin rolling hash chains by ${res.densityReductionScore}%.`
+      `Citation Shield Applied: Injected ${res.injectedCitations.length} reference anchor(s). Broken Turnitin rolling hash chains by ${res.densityReductionScore}%.`,
     );
     setIsCitationShieldOpen(false);
   };
@@ -455,7 +512,9 @@ export default function HumanizerPage() {
             width={28}
             className={styles.brandLogo}
           />
-          <span>humanizer<span className={styles.brandDot}>.</span></span>
+          <span>
+            humanizer<span className={styles.brandDot}>.</span>
+          </span>
         </Link>
 
         <nav className={styles.routeSwitch} aria-label="Workspace navigation">
@@ -469,7 +528,9 @@ export default function HumanizerPage() {
           ) : (
             <button
               type="button"
-              onClick={() => window.dispatchEvent(new Event("country-rank:open-sign-in"))}
+              onClick={() =>
+                window.dispatchEvent(new Event("country-rank:open-sign-in"))
+              }
               title="Sign in to open your board"
             >
               <LayoutDashboard size={15} /> Board
@@ -487,23 +548,26 @@ export default function HumanizerPage() {
         <aside className={styles.serviceRail} aria-label="Writing services">
           <div className={styles.railHeading}>Tools</div>
           <nav className={styles.serviceNav}>
-            {Services.map((service) => {
+            {TOOL_IDS.map((service) => {
               const Icon = SERVICE_ICONS[service];
+              const tool = getToolDefinition(service);
               return (
                 <button
                   key={service}
                   type="button"
-                  className={selectedService === service ? styles.activeService : ""}
+                  className={
+                    selectedService === service ? styles.activeService : ""
+                  }
                   onClick={() => {
                     setSelectedService(service);
                     setIsCitationShieldOpen(false);
                     setShieldSuccessMessage(null);
                     clearResult();
                   }}
-                  title={ServiceLabels[service]}
+                  title={tool.label}
                 >
                   <Icon size={18} />
-                  <span>{ServiceLabels[service]}</span>
+                  <span>{tool.label}</span>
                 </button>
               );
             })}
@@ -536,12 +600,14 @@ export default function HumanizerPage() {
               </h1>
             </div>
             <span className={styles.serviceStatus}>
-              <span /> {ServiceLabels[selectedService]} ready
+              <span /> {selectedTool.label} ready
             </span>
           </div>
 
           {/* Editor Controls Bar */}
-          <div className={`${styles.controlBar} mb-3 flex w-full flex-wrap items-center justify-start gap-3 text-xs text-slate-600 dark:text-[#9CA3AF]`}>
+          <div
+            className={`${styles.controlBar} mb-3 flex w-full flex-wrap items-center justify-start gap-3 text-xs text-slate-600 dark:text-[#9CA3AF]`}
+          >
             {selectedService === "plagiarism-checker" ? (
               <div className="flex flex-wrap items-center gap-3">
                 <span className="flex items-center gap-1.5 font-medium text-slate-900 dark:text-white/90">
@@ -601,43 +667,59 @@ export default function HumanizerPage() {
                 {/* Paraphraser Controls: Tone */}
                 <div className="flex items-center gap-2">
                   <SlidersHorizontal className="w-3.5 h-3.5 text-[#5555ff]" />
-                  <span className="font-medium text-slate-900 dark:text-white/90">Tone:</span>
+                  <span className="font-medium text-slate-900 dark:text-white/90">
+                    Tone:
+                  </span>
                   <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-xs dark:border-white/[0.08] dark:bg-[#12141A] dark:shadow-none">
-                    {(["standard", "formal", "creative", "shorten", "expand"] as ToneType[]).map(
-                      (t) => (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => setTone(t)}
-                          className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${tone === t
-                              ? "bg-[#5555ff] text-white font-medium shadow-xs"
-                              : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
-                            }`}
-                        >
-                          {t}
-                        </button>
-                      )
-                    )}
+                    {(
+                      [
+                        "standard",
+                        "formal",
+                        "creative",
+                        "shorten",
+                        "expand",
+                      ] as ToneType[]
+                    ).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTone(t)}
+                        className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${
+                          tone === t
+                            ? "bg-[#5555ff] text-white font-medium shadow-xs"
+                            : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 {/* Paraphraser Controls: Focus */}
-                <div className={`${styles.trailingControl} flex items-center gap-2`}>
-                  <span className="font-medium text-slate-900 dark:text-white/90">Focus:</span>
+                <div
+                  className={`${styles.trailingControl} flex items-center gap-2`}
+                >
+                  <span className="font-medium text-slate-900 dark:text-white/90">
+                    Focus:
+                  </span>
                   <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-xs dark:border-white/[0.08] dark:bg-[#12141A] dark:shadow-none">
-                    {(["vocabulary", "structure", "both"] as FocusType[]).map((f) => (
-                      <button
-                        key={f}
-                        type="button"
-                        onClick={() => setFocus(f)}
-                        className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${focus === f
-                            ? "bg-[#5555ff] text-white font-medium shadow-xs"
-                            : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
+                    {(["vocabulary", "structure", "both"] as FocusType[]).map(
+                      (f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => setFocus(f)}
+                          className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${
+                            focus === f
+                              ? "bg-[#5555ff] text-white font-medium shadow-xs"
+                              : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
                           }`}
-                      >
-                        {f}
-                      </button>
-                    ))}
+                        >
+                          {f}
+                        </button>
+                      ),
+                    )}
                   </div>
                 </div>
               </>
@@ -646,50 +728,65 @@ export default function HumanizerPage() {
                 {/* Mode Controls */}
                 <div className="flex items-center gap-2">
                   <SlidersHorizontal className="w-3.5 h-3.5 text-[#5555ff]" />
-                  <span className="font-medium text-slate-900 dark:text-white/90">Mode:</span>
+                  <span className="font-medium text-slate-900 dark:text-white/90">
+                    Mode:
+                  </span>
                   <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-xs dark:border-white/[0.08] dark:bg-[#12141A] dark:shadow-none">
-                    {(["natural", "academic", "professional", "casual"] as ModeType[]).map(
-                      (m) => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => setMode(m)}
-                          className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${mode === m
-                              ? "bg-[#5555ff] text-white font-medium shadow-xs"
-                              : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
-                            }`}
-                        >
-                          {m}
-                        </button>
-                      )
-                    )}
+                    {(
+                      [
+                        "natural",
+                        "academic",
+                        "professional",
+                        "casual",
+                      ] as ModeType[]
+                    ).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setMode(m)}
+                        className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${
+                          mode === m
+                            ? "bg-[#5555ff] text-white font-medium shadow-xs"
+                            : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 {/* Intensity Controls */}
-                <div className={`${styles.trailingControl} flex items-center gap-2`}>
-                  <span className="font-medium text-slate-900 dark:text-white/90">Intensity:</span>
+                <div
+                  className={`${styles.trailingControl} flex items-center gap-2`}
+                >
+                  <span className="font-medium text-slate-900 dark:text-white/90">
+                    Intensity:
+                  </span>
                   <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-xs dark:border-white/[0.08] dark:bg-[#12141A] dark:shadow-none">
-                    {(["low", "medium", "high"] as IntensityType[]).map((lvl) => (
-                      <button
-                        key={lvl}
-                        type="button"
-                        onClick={() => setIntensity(lvl)}
-                        className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${intensity === lvl
-                            ? "bg-[#5555ff] text-white font-medium shadow-xs"
-                            : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
+                    {(["low", "medium", "high"] as IntensityType[]).map(
+                      (lvl) => (
+                        <button
+                          key={lvl}
+                          type="button"
+                          onClick={() => setIntensity(lvl)}
+                          className={`px-3 py-1 rounded-md capitalize transition-colors duration-150 ${
+                            intensity === lvl
+                              ? "bg-[#5555ff] text-white font-medium shadow-xs"
+                              : "text-slate-600 hover:text-slate-950 dark:text-[#9CA3AF] dark:hover:text-white"
                           }`}
-                      >
-                        {lvl}
-                      </button>
-                    ))}
+                        >
+                          {lvl}
+                        </button>
+                      ),
+                    )}
                   </div>
                 </div>
               </>
             )}
 
-          {/* Citation Shield is a Humanizer-only server feature. */}
-          {selectedService === "humanizer" && (
+            {/* Citation Shield is a Humanizer-only server feature. */}
+            {selectedService === "humanizer" && (
               <button
                 type="button"
                 onClick={() => setIsCitationShieldOpen(!isCitationShieldOpen)}
@@ -702,8 +799,10 @@ export default function HumanizerPage() {
           </div>
 
           {/* Citation Shield Dropdown Settings Panel */}
-        {selectedService === "humanizer" && isCitationShieldOpen && (
-            <div className={`${styles.noticePanel} mb-4 w-full rounded-xl border border-[#5555ff]/25 bg-[#5555ff]/[0.04] p-4 shadow-sm`}>
+          {selectedService === "humanizer" && isCitationShieldOpen && (
+            <div
+              className={`${styles.noticePanel} mb-4 w-full rounded-xl border border-[#5555ff]/25 bg-[#5555ff]/[0.04] p-4 shadow-sm`}
+            >
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h4 className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
@@ -711,34 +810,52 @@ export default function HumanizerPage() {
                     <span>Risk-Driven Citation Shielding</span>
                   </h4>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
-                    Injects reference markers at dense 8-token rolling hash boundaries to mathematically fragment Turnitin fingerprints while maintaining academic validity.
+                    Injects reference markers at dense 8-token rolling hash
+                    boundaries to mathematically fragment Turnitin fingerprints
+                    while maintaining academic validity.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">Style:</span>
+                    <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                      Style:
+                    </span>
                     <select
                       value={citationStyle}
-                      onChange={(e) => setCitationStyle(e.target.value as CitationStyle)}
+                      onChange={(e) =>
+                        setCitationStyle(e.target.value as CitationStyle)
+                      }
                       className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 shadow-2xs dark:border-white/[0.08] dark:bg-[#12141A] dark:text-slate-200"
                     >
-                      <option value="latex">LaTeX (\cite&#123;key&#125;)</option>
+                      <option value="latex">
+                        LaTeX (\cite&#123;key&#125;)
+                      </option>
                       <option value="ieee">IEEE ([1], [2])</option>
                       <option value="apa">APA (Author, Year)</option>
                     </select>
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">Discipline:</span>
+                    <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                      Discipline:
+                    </span>
                     <select
                       value={citationDiscipline}
-                      onChange={(e) => setCitationDiscipline(e.target.value as AcademicDiscipline)}
+                      onChange={(e) =>
+                        setCitationDiscipline(
+                          e.target.value as AcademicDiscipline,
+                        )
+                      }
                       className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 shadow-2xs dark:border-white/[0.08] dark:bg-[#12141A] dark:text-slate-200"
                     >
-                      <option value="computer-science">Computer Science & AI</option>
+                      <option value="computer-science">
+                        Computer Science & AI
+                      </option>
                       <option value="engineering">Engineering & Physics</option>
-                      <option value="mathematics">Mathematics & Statistics</option>
+                      <option value="mathematics">
+                        Mathematics & Statistics
+                      </option>
                       <option value="finance">Quantitative Finance</option>
                       <option value="medicine">Medical & Life Sciences</option>
                       <option value="general">General Science</option>
@@ -759,8 +876,10 @@ export default function HumanizerPage() {
           )}
 
           {/* Shield Success Notification */}
-        {selectedService === "humanizer" && shieldSuccessMessage && (
-            <div className={`${styles.noticePanel} mb-4 flex w-full items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-50/50 p-3 text-xs text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-950/20 dark:text-emerald-300`}>
+          {selectedService === "humanizer" && shieldSuccessMessage && (
+            <div
+              className={`${styles.noticePanel} mb-4 flex w-full items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-50/50 p-3 text-xs text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-950/20 dark:text-emerald-300`}
+            >
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
                 <span>{shieldSuccessMessage}</span>
@@ -769,7 +888,10 @@ export default function HumanizerPage() {
                 <button
                   type="button"
                   onClick={() =>
-                    triggerDownload(new Blob([bibtexPackage], { type: "text/plain" }), "citations.bib")
+                    triggerDownload(
+                      new Blob([bibtexPackage], { type: "text/plain" }),
+                      "citations.bib",
+                    )
                   }
                   className="inline-flex items-center gap-1 font-semibold text-[#5555ff] hover:underline"
                 >
@@ -781,10 +903,16 @@ export default function HumanizerPage() {
           )}
 
           {/* Text Editor Surface */}
-          <div className={`${styles.editorGrid} w-full grid grid-cols-1 lg:grid-cols-2 gap-4`}>
+          <div
+            className={`${styles.editorGrid} w-full grid grid-cols-1 lg:grid-cols-2 gap-4`}
+          >
             {/* Input Panel */}
-            <div className={`${styles.editorPanel} relative flex min-h-[420px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/80 dark:border-white/[0.08] dark:bg-[#101216]/75`}>
-              <div className={`${styles.panelHeader} flex items-center justify-between border-b border-slate-200 px-4 py-2.5 dark:border-white/[0.06]`}>
+            <div
+              className={`${styles.editorPanel} relative flex min-h-[420px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/80 dark:border-white/[0.08] dark:bg-[#101216]/75`}
+            >
+              <div
+                className={`${styles.panelHeader} flex items-center justify-between border-b border-slate-200 px-4 py-2.5 dark:border-white/[0.06]`}
+              >
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-[#D1D5DB]">
                     Input Text
@@ -825,7 +953,6 @@ export default function HumanizerPage() {
                       <span>Clear</span>
                     </button>
                   )}
-
                 </div>
               </div>
 
@@ -842,7 +969,9 @@ export default function HumanizerPage() {
                     ) : (
                       <BookOpen className="h-3.5 w-3.5 text-emerald-500" />
                     )}
-                    <span className="font-semibold truncate">{uploadedFile.name}</span>
+                    <span className="font-semibold truncate">
+                      {uploadedFile.name}
+                    </span>
                     <span className="text-[10px] text-[#5555ff]">
                       {uploadedFile.format === "docx"
                         ? "(Word XML Runs Locked)"
@@ -904,12 +1033,14 @@ export default function HumanizerPage() {
 
               <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/50 px-4 py-3 dark:border-white/[0.06] dark:bg-white/[0.01]">
                 <span
-                  className={`text-xs ${exceedsInputLimit
+                  className={`text-xs ${
+                    exceedsInputLimit
                       ? "text-red-500"
                       : "text-slate-500 dark:text-[#6B7280]"
-                    }`}
+                  }`}
                 >
-                  Characters: {characterCount.toLocaleString()} / {maxInputLength.toLocaleString()}
+                  Characters: {characterCount.toLocaleString()} /{" "}
+                  {maxInputLength.toLocaleString()}
                 </span>
 
                 {/* Action Button */}
@@ -917,17 +1048,21 @@ export default function HumanizerPage() {
                   onClick={handleAction}
                   isLoading={isLoading}
                   disabled={!inputText.trim() || exceedsInputLimit}
-                  label={`${ServiceActionLabels[selectedService]} text`}
+                  label={`${selectedTool.actionLabel} text`}
                 />
               </div>
             </div>
 
             {/* Output / Report Panel */}
-            <div className={`${styles.editorPanel} relative flex min-h-[420px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/80 dark:border-white/[0.08] dark:bg-[#101216]/75`}>
-              <div className={`${styles.panelHeader} flex items-center justify-between border-b border-slate-200 px-4 py-2.5 dark:border-white/[0.06]`}>
+            <div
+              className={`${styles.editorPanel} relative flex min-h-[420px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/80 dark:border-white/[0.08] dark:bg-[#101216]/75`}
+            >
+              <div
+                className={`${styles.panelHeader} flex items-center justify-between border-b border-slate-200 px-4 py-2.5 dark:border-white/[0.06]`}
+              >
                 <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-700 dark:text-[#D1D5DB]">
                   <span className="w-2 h-2 rounded-full bg-[#5555ff]" />
-                  {ServiceLabels[selectedService]} Output
+                  {selectedTool.label} Output
                 </span>
 
                 <div className="flex items-center gap-2">
@@ -980,7 +1115,8 @@ export default function HumanizerPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 text-sm leading-relaxed text-slate-900 dark:text-[#F3F4F6]">
-                {selectedService === "plagiarism-checker" && plagiarismResult ? (
+                {selectedService === "plagiarism-checker" &&
+                plagiarismResult ? (
                   <PlagiarismView
                     result={plagiarismResult}
                     originalText={inputText}
@@ -1010,7 +1146,8 @@ export default function HumanizerPage() {
                       <Sparkles className="h-8 w-8 text-slate-300 dark:text-[#2A2F3D]" />
                     )}
                     <p className="text-xs max-w-xs font-medium">
-                      Your {ServiceLabels[selectedService].toLowerCase()} report and analysis will appear here.
+                      Your {selectedTool.label.toLowerCase()} report and
+                      analysis will appear here.
                     </p>
                   </div>
                 )}

@@ -1,0 +1,415 @@
+.boardPage {
+  min-width: 320px;
+}
+.boardBody {
+  overflow: hidden;
+}
+.boardContent {
+  height: 100%;
+  margin-left: 68px;
+  overflow: auto;
+  padding: 38px clamp(24px, 4vw, 64px) 56px;
+}
+.contentInner {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+.intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  margin-bottom: 34px;
+}
+.intro h1 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 520;
+  letter-spacing: -2.2px;
+  line-height: 1;
+}
+.intro p {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.primaryActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.primaryButton,
+.secondaryButton,
+.sortButton {
+  display: inline-flex;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 0 18px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    transform 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
+}
+.primaryButton {
+  border: 1px solid #5555ff;
+  background: linear-gradient(135deg, #5555ff 0%, #2929ff 100%);
+  color: #fff;
+  box-shadow: 0 8px 20px #2929ff24;
+}
+.primaryButton:hover {
+  transform: translateY(-1px);
+}
+.primaryButton:disabled {
+  cursor: wait;
+  opacity: 0.72;
+  transform: none;
+}
+.secondaryButton,
+.sortButton {
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.secondaryButton:hover,
+.sortButton:hover {
+  border-color: color-mix(in srgb, var(--ink) 28%, var(--line));
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.searchBox {
+  display: flex;
+  width: min(620px, 55%);
+  flex: 1 1 360px;
+  height: 46px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 17px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: var(--surface-alt);
+  color: var(--muted);
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
+}
+.searchBox:focus-within {
+  border-color: #5555ff66;
+  background: var(--surface);
+}
+.searchBox input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+}
+.searchBox input::placeholder {
+  color: var(--muted);
+}
+.sortButton {
+  margin-left: auto;
+  height: 40px;
+  border-radius: 11px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+.viewSwitch {
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-alt);
+}
+.viewSwitch button,
+.cardActions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.viewSwitch button {
+  width: 31px;
+  height: 31px;
+  border-radius: 8px;
+}
+.viewSwitch button:hover,
+.viewSwitch .activeView {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 4px #00000012;
+}
+.sectionLabel {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.sectionLabel h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 650;
+}
+.sectionLabel span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.documentGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+  gap: 16px;
+}
+.documentCard {
+  display: flex;
+  min-height: 250px;
+  flex-direction: column;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  outline: none;
+  background: var(--surface);
+  box-shadow: 0 12px 30px #00000006;
+  cursor: pointer;
+  transition:
+    transform 170ms ease,
+    border-color 170ms ease,
+    box-shadow 170ms ease;
+}
+.documentCard:hover {
+  transform: translateY(-2px);
+  border-color: #5555ff55;
+  box-shadow: 0 16px 38px #0000000d;
+}
+.documentCard:focus-visible {
+  border-color: #5555ff;
+  box-shadow: 0 0 0 3px #5555ff24;
+}
+.cardTop,
+.cardActions,
+.cardMeta {
+  display: flex;
+  align-items: center;
+}
+.cardTop {
+  justify-content: space-between;
+}
+.fileIcon {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #5555ff12;
+  color: #5555ff;
+}
+.cardActions {
+  gap: 3px;
+}
+.cardActions button {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+.cardActions button:hover {
+  background: var(--surface-alt);
+  color: var(--ink);
+}
+.cardActions button:disabled {
+  cursor: wait;
+  opacity: 0.45;
+}
+.cardCopy {
+  margin-top: 32px;
+}
+.cardCopy h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 650;
+}
+.cardCopy p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.cardMeta {
+  gap: 6px;
+  margin-top: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+.listView {
+  grid-template-columns: 1fr;
+}
+.listView .documentCard {
+  display: grid;
+  min-height: 90px;
+  grid-template-columns: 100px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+}
+.listView .cardCopy,
+.listView .cardMeta {
+  margin: 0;
+}
+.listView .cardTop {
+  justify-content: flex-start;
+  gap: 8px;
+}
+.listView .cardMeta {
+  justify-content: flex-end;
+}
+.emptyState {
+  display: flex;
+  min-height: 280px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border: 1px dashed var(--line);
+  border-radius: 18px;
+  color: var(--muted);
+  text-align: center;
+}
+.emptyState h3 {
+  margin: 12px 0 4px;
+  color: var(--ink);
+  font-size: 14px;
+}
+.emptyState p {
+  margin: 0;
+  font-size: 12px;
+}
+.settingsPanel {
+  overflow: hidden;
+  max-width: 760px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+}
+.settingsPanel > div {
+  padding: 22px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-alt);
+}
+.settingsPanel h2,
+.settingsPanel p {
+  margin: 0;
+}
+.settingsPanel h2 {
+  font-size: 15px;
+}
+.settingsPanel p,
+.settingRow small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.settingsPanel p {
+  margin-top: 5px;
+}
+.settingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line);
+}
+.settingRow:last-child {
+  border-bottom: 0;
+}
+.settingRow span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.settingRow strong {
+  font-size: 12px;
+}
+.settingRow input {
+  accent-color: #5555ff;
+}
+.spinner {
+  animation: spin 800ms linear infinite;
+}
+.errorMessage {
+  margin: 14px 0 0;
+  color: #e5484d;
+  font-size: 12px;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 820px) {
+  .boardContent {
+    height: auto;
+    margin-left: 0;
+    overflow: visible;
+    padding: 28px 16px 40px;
+  }
+  .intro {
+    align-items: flex-start;
+    flex-direction: column;
+    margin-bottom: 26px;
+  }
+  .toolbar {
+    flex-wrap: wrap;
+  }
+  .searchBox {
+    width: 100%;
+    max-width: none;
+    flex-basis: 100%;
+  }
+}
+@media (max-width: 540px) {
+  .intro h1 {
+    font-size: 34px;
+  }
+  .primaryActions {
+    width: 100%;
+  }
+  .primaryActions button {
+    flex: 1;
+    padding: 0 12px;
+  }
+  .sortButton {
+    overflow: hidden;
+    max-width: 170px;
+    text-overflow: ellipsis;
+  }
+  .documentGrid {
+    grid-template-columns: 1fr;
+  }
+  .listView .documentCard {
+    display: flex;
+    min-height: 210px;
+  }
+  .listView .cardCopy {
+    margin-top: 24px;
+  }
+  .listView .cardMeta {
+    margin-top: auto;
+  }
+}
