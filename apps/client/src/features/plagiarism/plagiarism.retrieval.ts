@@ -2,16 +2,50 @@ import "server-only";
 
 import { env } from "@/lib/env";
 import type { PlagiarismSource } from "./plagiarism.types";
+import { SerperSearchResultDto } from "./plagiarism.dto";
 
 // ---------------------------------------------------------------------------
 // Stopwords (inline — no external import)
 // ---------------------------------------------------------------------------
 
 const STOPWORDS = new Set([
-  "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-  "of", "with", "by", "from", "is", "was", "are", "were", "be", "been",
-  "have", "has", "had", "do", "does", "did", "not", "it", "this", "that",
-  "these", "those", "we", "our", "their", "its",
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "but",
+  "in",
+  "on",
+  "at",
+  "to",
+  "for",
+  "of",
+  "with",
+  "by",
+  "from",
+  "is",
+  "was",
+  "are",
+  "were",
+  "be",
+  "been",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "not",
+  "it",
+  "this",
+  "that",
+  "these",
+  "those",
+  "we",
+  "our",
+  "their",
+  "its",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -42,7 +76,7 @@ export function buildSearchQueries(text: string, maxQueries = 4): string[] {
   // Score each word by content value: non-stopword, length > 4 = higher weight
   const wordScores = words.map((w) => ({
     word: w,
-    score: STOPWORDS.has(w) ? 0 : (w.length > 5 ? 2 : 1),
+    score: STOPWORDS.has(w) ? 0 : w.length > 5 ? 2 : 1,
   }));
 
   // Build 5-word n-gram candidates and score by sum of word scores
@@ -76,7 +110,7 @@ export function buildSearchQueries(text: string, maxQueries = 4): string[] {
   for (const candidate of candidates) {
     if (selected.length >= maxQueries) break;
     const tooClose = selected.some(
-      (s) => Math.abs(s.startIdx - candidate.startIdx) < MIN_GAP
+      (s) => Math.abs(s.startIdx - candidate.startIdx) < MIN_GAP,
     );
     if (!tooClose) {
       selected.push(candidate);
@@ -90,10 +124,6 @@ export function buildSearchQueries(text: string, maxQueries = 4): string[] {
 // Web Search via Serper API
 // ---------------------------------------------------------------------------
 
-interface SerperSearchResult {
-  organic?: Array<{ link?: string; title?: string; snippet?: string }>;
-}
-
 /**
  * Calls the Serper Google Search API with the provided query string.
  * Returns an empty array when the API key is absent or the request fails.
@@ -102,7 +132,7 @@ interface SerperSearchResult {
  * @returns Array of search results with url, title, and snippet.
  */
 export async function searchWeb(
-  query: string
+  query: string,
 ): Promise<Array<{ url: string; title: string; snippet: string }>> {
   const apiKey = env.SERPER_API_KEY;
 
@@ -123,11 +153,13 @@ export async function searchWeb(
     });
 
     if (!response.ok) {
-      console.warn(`Serper API returned ${response.status} for query: "${query}"`);
+      console.warn(
+        `Serper API returned ${response.status} for query: "${query}"`,
+      );
       return [];
     }
 
-    const data = (await response.json()) as SerperSearchResult;
+    const data = SerperSearchResultDto.parse(await response.json());
 
     return (data.organic ?? [])
       .filter((r) => r.link)
@@ -148,7 +180,8 @@ export async function searchWeb(
 // ---------------------------------------------------------------------------
 
 /** Regex patterns for HTML stripping */
-const SCRIPT_STYLE_REGEX = /<(?:script|style)[^>]*>[\s\S]*?<\/(?:script|style)>/gi;
+const SCRIPT_STYLE_REGEX =
+  /<(?:script|style)[^>]*>[\s\S]*?<\/(?:script|style)>/gi;
 const HTML_TAG_REGEX = /<[^>]+>/g;
 const HTML_ENTITY_REGEX = /&(?:#\d+|#x[\da-fA-F]+|[a-zA-Z]+);/g;
 const MAX_PAGE_TEXT_LENGTH = 50_000;
@@ -231,7 +264,7 @@ export async function fetchPageText(url: string): Promise<string> {
  */
 export async function retrieveCandidateSources(
   text: string,
-  maxSources = 10
+  maxSources = 10,
 ): Promise<PlagiarismSource[]> {
   const queries = buildSearchQueries(text);
 
@@ -242,7 +275,8 @@ export async function retrieveCandidateSources(
 
   // Deduplicate URLs
   const seen = new Set<string>();
-  const uniqueResults: Array<{ url: string; title: string; snippet: string }> = [];
+  const uniqueResults: Array<{ url: string; title: string; snippet: string }> =
+    [];
   for (const batch of searchResults) {
     for (const result of batch) {
       if (!seen.has(result.url)) {
@@ -270,7 +304,7 @@ export async function retrieveCandidateSources(
         retrievedAt: new Date(),
         rawText,
       };
-    })
+    }),
   );
 
   // Filter out sources where we could not retrieve any text

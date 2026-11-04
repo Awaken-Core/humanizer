@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/ratelimit";
+import { humanizeText, HumanizerError } from "@/features/humanizer";
 import {
-  humanizeText,
   ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
   AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
   createHumanizeTextInputSchema,
-  HumanizerError,
-} from "@/features/humanizer";
+} from "@/features/humanizer/humanizer.dto";
 import {
   completeAiJob,
   failAiJob,
@@ -32,7 +31,7 @@ export async function POST(req: NextRequest) {
             message: "Content-Type must be application/json.",
           },
         },
-        { status: 415 }
+        { status: 415 },
       );
     }
 
@@ -49,7 +48,7 @@ export async function POST(req: NextRequest) {
             message: "Request body contains invalid or malformed JSON.",
           },
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -58,7 +57,8 @@ export async function POST(req: NextRequest) {
     const maxInputLength = requestContext.isAuthenticated
       ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
       : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
-    const parseResult = createHumanizeTextInputSchema(maxInputLength).safeParse(body);
+    const parseResult =
+      createHumanizeTextInputSchema(maxInputLength).safeParse(body);
     if (!parseResult.success) {
       const issue = parseResult.error.issues[0];
       const message = issue?.message || "Invalid input parameters.";
@@ -76,13 +76,13 @@ export async function POST(req: NextRequest) {
             message,
           },
         },
-        { status: isLengthError ? 413 : 400 }
+        { status: isLengthError ? 413 : 400 },
       );
     }
 
     const rateLimit = await checkRateLimit(
       requestContext.rateLimitIdentifier,
-      requestContext.isAuthenticated
+      requestContext.isAuthenticated,
     );
 
     // In production, fail closed with 503 if strict rate limiting cannot be enforced
@@ -96,14 +96,14 @@ export async function POST(req: NextRequest) {
               "Rate limiting service is temporarily unavailable. Request blocked for system protection.",
           },
         },
-        { status: 503 }
+        { status: 503 },
       );
     }
 
     if (!rateLimit.success) {
       const retryAfterSec = Math.max(
         1,
-        Math.ceil((rateLimit.reset - Date.now()) / 1000)
+        Math.ceil((rateLimit.reset - Date.now()) / 1000),
       );
 
       return NextResponse.json(
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
             "X-RateLimit-Remaining": String(rateLimit.remaining),
             "X-RateLimit-Reset": String(rateLimit.reset),
           },
-        }
+        },
       );
     }
 
@@ -139,13 +139,16 @@ export async function POST(req: NextRequest) {
     const result = await humanizeText(parseResult.data);
     await completeAiJob(
       jobId,
-      { content: result.humanizedText, detectedLanguage: result.detectedLanguage },
+      {
+        content: result.humanizedText,
+        detectedLanguage: result.detectedLanguage,
+      },
       {
         model: result.processingMetadata.model,
         durationMs: result.processingMetadata.durationMs,
         promptTokens: result.processingMetadata.tokens?.promptTokens,
         completionTokens: result.processingMetadata.tokens?.completionTokens,
-      }
+      },
     );
 
     // 7. Success Response
@@ -181,7 +184,7 @@ export async function POST(req: NextRequest) {
           "X-RateLimit-Limit": String(rateLimit.limit),
           "X-RateLimit-Remaining": String(rateLimit.remaining),
         },
-      }
+      },
     );
   } catch (error: unknown) {
     if (jobId) await failAiJob(jobId, error);
@@ -195,7 +198,7 @@ export async function POST(req: NextRequest) {
             message: error.message,
           },
         },
-        { status: error.status }
+        { status: error.status },
       );
     }
 
@@ -207,10 +210,11 @@ export async function POST(req: NextRequest) {
           success: false,
           error: {
             code: "AI_TIMEOUT",
-            message: "The AI request timed out. Please try again with shorter text.",
+            message:
+              "The AI request timed out. Please try again with shorter text.",
           },
         },
-        { status: 504 }
+        { status: 504 },
       );
     }
 
@@ -222,10 +226,11 @@ export async function POST(req: NextRequest) {
         success: false,
         error: {
           code: "INTERNAL_SERVER_ERROR",
-          message: "An unexpected error occurred while processing your request.",
+          message:
+            "An unexpected error occurred while processing your request.",
         },
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

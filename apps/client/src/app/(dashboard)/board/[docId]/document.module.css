@@ -1,0 +1,231 @@
+.documentPage {
+  min-height: 100vh;
+  overflow: hidden;
+}
+.documentHeader {
+  position: relative;
+  z-index: 80;
+  display: flex;
+  height: 68px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 22px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--page) 92%, transparent);
+  backdrop-filter: blur(16px);
+}
+.headerStart,
+.headerActions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+.headerStart {
+  flex: 1;
+}
+.headerActions {
+  justify-content: flex-end;
+}
+.themeControl {
+  display: inline-flex;
+}
+.themeControl > button {
+  width: 39px;
+  height: 39px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow:
+    inset 0 1px 0 #ffffff14,
+    0 2px 3px #00000012;
+}
+.themeControl > button:hover {
+  border-color: var(--muted);
+  background: var(--surface-alt);
+}
+.moreMenu {
+  position: relative;
+  display: inline-flex;
+}
+.moreDropdown {
+  position: absolute;
+  z-index: 100;
+  top: calc(100% + 8px);
+  right: 0;
+  display: flex;
+  width: 196px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 16px 45px #0000001f;
+}
+.moreDropdown button {
+  display: flex;
+  width: 100%;
+  min-height: 36px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+.moreDropdown button:hover:not(:disabled) {
+  background: var(--surface-alt);
+}
+.moreDropdown button:disabled {
+  cursor: wait;
+  opacity: 0.5;
+}
+.moreDropdown button svg {
+  color: var(--blue);
+}
+.brandMark {
+  display: inline-flex;
+  padding: 5px;
+  border-radius: 9px;
+}
+.brandMark:hover,
+.iconButton:hover {
+  background: var(--surface-alt);
+}
+.divider {
+  width: 1px;
+  height: 25px;
+  margin: 0 4px;
+  background: var(--line);
+}
+.documentIcon {
+  flex: 0 0 auto;
+  color: #5555ff;
+}
+.titleInput {
+  width: min(360px, 35vw);
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 560;
+}
+.iconButton,
+.shareButton,
+.toolsButton {
+  display: inline-flex;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.iconButton {
+  width: 36px;
+  flex: 0 0 36px;
+}
+.shareButton {
+  padding: 0 12px;
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.toolsButton {
+  width: 36px;
+  flex: 0 0 36px;
+  padding: 0;
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+.toolsButton span {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.toolsButton:hover,
+.toolsButton[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--blue) 45%, var(--line));
+  background: color-mix(in srgb, var(--blue) 8%, var(--surface));
+  color: var(--blue);
+}
+.shareButton:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.saveStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.saveStatus:has(svg:first-child) {
+  transition: color 160ms ease;
+}
+.documentMain {
+  height: calc(100vh - 68px);
+  overflow-y: auto;
+}
+.stateMessage {
+  display: flex;
+  min-height: calc(100vh - 68px);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.stateMessage strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+.stateMessage a {
+  color: #5555ff;
+}
+.spinner {
+  animation: spin 800ms linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 680px) {
+  .documentHeader {
+    padding: 0 10px;
+  }
+  .saveStatus,
+  .shareButton,
+  .brandMark,
+  .divider {
+    display: none;
+  }
+  .titleInput {
+    width: 45vw;
+  }
+  .toolsButton {
+    width: 36px;
+    padding: 0;
+  }
+}

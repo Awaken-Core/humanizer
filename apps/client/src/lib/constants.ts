@@ -1,28 +1,15 @@
-export const Services = [
-    "humanizer",
-    "plagiarism-checker",
-    "ai-detector",
-    "paraphraser",
-    "summarizer",
-    "grammar-checker",
-] as const;
+import { TOOL_IDS, TOOL_REGISTRY, type ToolId } from "@/lib/tool-registry";
 
-export type Service = (typeof Services)[number];
+/** @deprecated Prefer TOOL_IDS and TOOL_REGISTRY from tool-registry. */
+export const Services = TOOL_IDS;
+export type Service = ToolId;
 
-export const ServiceLabels: Record<Service, string> = {
-    humanizer: "Humanizer",
-    "plagiarism-checker": "Plagiarism checker",
-    "ai-detector": "AI detector",
-    paraphraser: "Paraphraser",
-    summarizer: "Summarizer",
-    "grammar-checker": "Grammar checker",
-};
+/** @deprecated Prefer getToolDefinition(service).label. */
+export const ServiceLabels = Object.fromEntries(
+  TOOL_IDS.map((id) => [id, TOOL_REGISTRY[id].label]),
+) as Record<Service, string>;
 
-export const ServiceActionLabels: Record<Service, string> = {
-    humanizer: "Humanize",
-    "plagiarism-checker": "Check plagiarism",
-    "ai-detector": "Detect AI",
-    paraphraser: "Paraphrase",
-    summarizer: "Summarize",
-    "grammar-checker": "Check grammar",
-};
+/** @deprecated Prefer getToolDefinition(service).actionLabel. */
+export const ServiceActionLabels = Object.fromEntries(
+  TOOL_IDS.map((id) => [id, TOOL_REGISTRY[id].actionLabel]),
+) as Record<Service, string>;
