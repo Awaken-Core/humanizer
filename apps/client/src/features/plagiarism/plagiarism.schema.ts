@@ -6,10 +6,10 @@ import type { PlagiarismSettings } from "./plagiarism.types";
 // ---------------------------------------------------------------------------
 
 /** Maximum characters allowed for unauthenticated (anonymous) requests. */
-export const ANONYMOUS_MAX_PLAGIARISM_LENGTH = 1000;
+export const ANONYMOUS_MAX_PLAGIARISM_LENGTH = 800;
 
 /** Maximum characters allowed for authenticated user requests. */
-export const AUTHENTICATED_MAX_PLAGIARISM_LENGTH = 20_000;
+export const AUTHENTICATED_MAX_PLAGIARISM_LENGTH = 15_000;
 
 /** Default settings applied when the caller omits settings entirely. */
 export const DEFAULT_PLAGIARISM_SETTINGS: PlagiarismSettings = {

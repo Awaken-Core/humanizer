@@ -2,8 +2,8 @@
  * Core TypeScript types for the Grammar & Style Checker feature.
  */
 
-export const ANONYMOUS_MAX_GRAMMAR_LENGTH = 1_500;
-export const AUTHENTICATED_MAX_GRAMMAR_LENGTH = 25_000;
+export const ANONYMOUS_MAX_GRAMMAR_LENGTH = 800;
+export const AUTHENTICATED_MAX_GRAMMAR_LENGTH = 15_000;
 
 export type GrammarCategory =
   | "grammar"

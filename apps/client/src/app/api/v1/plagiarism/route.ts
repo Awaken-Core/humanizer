@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/ratelimit";
 import {
   checkPlagiarism,
-  ANONYMOUS_MAX_PLAGIARISM_LENGTH,
-  AUTHENTICATED_MAX_PLAGIARISM_LENGTH,
   createPlagiarismInputSchema,
   PlagiarismError,
 } from "@/features/plagiarism";
+import {
+  ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
+  AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
+} from "@/features/humanizer/humanizer.schema";
 import {
   completeAiJob,
   failAiJob,
@@ -60,8 +62,8 @@ export async function POST(req: NextRequest) {
     // 3. Auth context + length limit selection
     const requestContext = await getAiRequestContext(req);
     const maxInputLength = requestContext.isAuthenticated
-      ? AUTHENTICATED_MAX_PLAGIARISM_LENGTH
-      : ANONYMOUS_MAX_PLAGIARISM_LENGTH;
+      ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
+      : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
 
     const parseResult = createPlagiarismInputSchema(maxInputLength).safeParse(body);
     if (!parseResult.success) {

@@ -8,11 +8,11 @@ import {
   failAiJob,
 } from "@/lib/ai-request.server";
 import { checkRateLimit } from "@/lib/ratelimit";
+import { checkGrammar } from "@/features/grammar";
 import {
-  checkGrammar,
-  ANONYMOUS_MAX_GRAMMAR_LENGTH,
-  AUTHENTICATED_MAX_GRAMMAR_LENGTH,
-} from "@/features/grammar";
+  ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
+  AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
+} from "@/features/humanizer/humanizer.schema";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -57,8 +57,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const maxLength = context.isAuthenticated
-    ? AUTHENTICATED_MAX_GRAMMAR_LENGTH
-    : ANONYMOUS_MAX_GRAMMAR_LENGTH;
+    ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
+    : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
 
   const schema = createGrammarInputSchema(maxLength);
   const parsed = schema.safeParse(body);

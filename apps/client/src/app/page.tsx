@@ -149,7 +149,7 @@ const footerGroups = [
 function Brand() {
   return (
     <Link href="/" aria-label="Humanizer home" className={styles.brand}>
-      <Starburst size={28} color="#D9D9D9" /> humanizer
+      <Starburst size={28} /> humanizer
       <span className={styles.brandDot}>.</span>
     </Link>
   );
@@ -174,7 +174,7 @@ function SectionTitle({
 
 export function Starburst({
   size = 320,
-  color = "#D9D9D9",
+  color = "currentColor",
   ...props
 }) {
   return (

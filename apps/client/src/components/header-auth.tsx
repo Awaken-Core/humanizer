@@ -25,10 +25,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signIn, signOut, signUp, useSession } from "@/lib/auth-client";
 import { GoogleIcon } from "@/components/auth/google-svg";
+import { UserRound } from "lucide-react";
 
 const subscribeToMount = () => () => {};
 
-export function HeaderAuth() {
+export function HeaderAuth({ compact = false }: { compact?: boolean }) {
   const mounted = useSyncExternalStore(subscribeToMount, () => true, () => false);
   const { data: session, isPending: isSessionPending } = useSession();
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -108,8 +109,13 @@ export function HeaderAuth() {
   if (!mounted) {
     return (
       <div className="flex items-center gap-3">
-        <Button variant="outline" size="sm" className="rounded-full px-3 sm:px-4 text-xs font-medium opacity-60">
-          Sign in
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label="Sign in"
+          className={compact ? "size-10 rounded-full p-0 opacity-60" : "rounded-full px-3 sm:px-4 text-xs font-medium opacity-60"}
+        >
+          {compact ? <UserRound className="size-4" /> : "Sign in"}
         </Button>
       </div>
     );
@@ -118,8 +124,14 @@ export function HeaderAuth() {
   return (
     <div className="flex items-center gap-3">
       {isSessionPending ? (
-        <Button variant="outline" size="sm" disabled>
-          Loading…
+        <Button
+          variant="outline"
+          size="sm"
+          disabled
+          aria-label="Loading account"
+          className={compact ? "size-10 rounded-full p-0" : undefined}
+        >
+          {compact ? <UserRound className="size-4 opacity-50" /> : "Loading…"}
         </Button>
       ) : session?.user ? (
         <DropdownMenu>
@@ -168,8 +180,14 @@ export function HeaderAuth() {
       ) : (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="rounded-full px-3 sm:px-4 text-xs font-medium">
-              Sign in
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Sign in"
+              title="Sign in"
+              className={compact ? "size-10 rounded-full p-0" : "rounded-full px-3 sm:px-4 text-xs font-medium"}
+            >
+              {compact ? <UserRound className="size-4" /> : "Sign in"}
             </Button>
           </DialogTrigger>
           <DialogContent className="overflow-hidden p-0 sm:max-w-2xl md:grid md:grid-cols-[0.9fr_1.1fr] md:gap-0">

@@ -5,12 +5,13 @@ import { getAiRequestContext, startAiJob, completeAiJob, failAiJob } from "@/lib
 import { checkRateLimit } from "@/lib/ratelimit";
 import { detectAi } from "@/features/ai-detector";
 import { z } from "zod";
+import {
+  ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
+  AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
+} from "@/features/humanizer/humanizer.schema";
 
 export const runtime = "nodejs";
 export const maxDuration = 10;
-
-const ANONYMOUS_MAX_LENGTH = 2000;
-const AUTHENTICATED_MAX_LENGTH = 50_000;
 
 const createAiDetectSchema = (maxLength: number) =>
   z.object({
@@ -47,7 +48,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid JSON in request body." }, { status: 400 });
   }
 
-  const maxLength = context.isAuthenticated ? AUTHENTICATED_MAX_LENGTH : ANONYMOUS_MAX_LENGTH;
+  const maxLength = context.isAuthenticated
+    ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
+    : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
   const schema = createAiDetectSchema(maxLength);
   const parsed = schema.safeParse(body);
   if (!parsed.success) {

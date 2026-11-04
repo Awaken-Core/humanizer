@@ -31,19 +31,19 @@ export const HumanizeButton: React.FC<HumanizeButtonProps> = ({
       aria-busy={isLoading}
       className={cn(
         // Base structure & typography
-        "group relative inline-flex items-center justify-center gap-2.5 px-6 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 select-none",
+        "group relative inline-flex min-h-12 items-center justify-center gap-3 px-6 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 select-none",
         // Proportions & shape (rounded SaaS action, not pill-like)
-        "rounded-xl border",
-        // Visual styling: Solid electric-blue / cyan treatment with crisp contrast
+        "rounded-full border",
+        // Match the landing page's electric-blue primary action.
         !isDisabled && [
-          "bg-gradient-to-r from-[#0066FF] via-[#0070F3] to-[#0099FF] text-white",
-          "border-[#0080FF]/40 shadow-[0_1px_2px_rgba(0,0,0,0.4),0_0_20px_rgba(0,112,243,0.25)]",
-          "hover:border-[#00B4D8]/60 hover:shadow-[0_2px_4px_rgba(0,0,0,0.5),0_0_28px_rgba(0,150,255,0.45)] hover:brightness-105",
-          "active:scale-[0.985] active:brightness-95",
+          "border-[#4b4bff] bg-gradient-to-b from-[#2929ff] to-[#0000ff] text-white",
+          "shadow-[inset_0_1px_1px_rgba(255,255,255,0.34),0_3px_0_#0000a5,0_7px_18px_rgba(0,0,255,0.18)]",
+          "hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[inset_0_1px_1px_rgba(255,255,255,0.38),0_4px_0_#00008f,0_11px_24px_rgba(0,0,255,0.24)]",
+          "active:translate-y-px active:scale-[0.985]",
         ],
         // Disabled / Loading styling
         isDisabled && [
-          "bg-[#1A1D24] text-[#6B7280] border-[#2A2F3D] cursor-not-allowed shadow-none",
+          "border-neutral-200 bg-neutral-100 text-neutral-400 cursor-not-allowed shadow-none dark:border-neutral-800 dark:bg-[#191919] dark:text-neutral-600",
         ],
         className
       )}
