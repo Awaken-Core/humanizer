@@ -23,6 +23,7 @@ import {
 import { ModeToggle } from "@/components/theme-toggle";
 import { HeaderAuth } from "@/components/header-auth";
 import styles from "./landing.module.css";
+import Image from "next/image";
 
 const tools = [
   {
@@ -148,7 +149,7 @@ const footerGroups = [
 function Brand() {
   return (
     <Link href="/" aria-label="Humanizer home" className={styles.brand}>
-      <span className={styles.brandMark}>✳</span> humanizer
+      <Starburst size={28} color="#D9D9D9" /> humanizer
       <span className={styles.brandDot}>.</span>
     </Link>
   );
@@ -170,6 +171,39 @@ function SectionTitle({
     </div>
   );
 }
+
+export function Starburst({
+  size = 320,
+  color = "#D9D9D9",
+  ...props
+}) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      viewBox="0 0 824 841"
+      fill="none"
+      role="img"
+      aria-label="Starburst"
+      style={{ display: "block", maxWidth: "100%", height: "auto" }}
+      {...props}
+    >
+      <g stroke={color} strokeWidth="78" strokeLinecap="round">
+        {Array.from({ length: 10 }, (_, index) => (
+          <line
+            key={index}
+            x1="412"
+            y1="420.5"
+            x2="412"
+            y2="39"
+            transform={`rotate(${index * 36} 412 420.5)`}
+          />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
 
 export default function HomePage() {
   const [mobileOpen, setMobileOpen] = useState(false);

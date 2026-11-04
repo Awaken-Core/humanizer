@@ -81,6 +81,7 @@ import {
   type CitationStyle,
   type AcademicDiscipline,
 } from "@/features/humanizer/citation-shield";
+import Image from "next/image";
 
 // Dynamically import the 3D Floating Orb with SSR disabled to guarantee transparent WebGL canvas mounting
 const FloatingOrb = dynamic(
@@ -476,7 +477,7 @@ export default function HumanizerPage() {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#0066FF] to-[#00D4FF] flex items-center justify-center shadow-[0_0_16px_rgba(0,112,243,0.4)]">
-              <Sparkles className="w-4 h-4 text-white" />
+              <Image alt="logo" src="/image/logo.svg" height={32} width={32} className="size-7" />
             </div>
             <span className="text-base font-semibold tracking-tight text-slate-950 dark:text-white">
               Awaken <span className="text-[#00B4D8]">Intelligence Studio</span>
