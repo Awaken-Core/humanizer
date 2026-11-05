@@ -1,3 +1,4 @@
+import { withDatabaseScope } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { Document, DocumentVersion } from "@/modal/document";
 import {
@@ -9,7 +10,7 @@ import {
   serializeDocument,
 } from "@/lib/document.server";
 
-export async function GET(
+async function handleGET(
   _request: Request,
   context: { params: Promise<{ documentId: string }> },
 ) {
@@ -70,7 +71,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
+async function handlePATCH(
   request: Request,
   context: { params: Promise<{ documentId: string }> },
 ) {
@@ -204,3 +205,6 @@ export async function PATCH(
     );
   }
 }
+
+export const GET = withDatabaseScope(handleGET);
+export const PATCH = withDatabaseScope(handlePATCH);

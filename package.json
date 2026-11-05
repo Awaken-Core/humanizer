@@ -7,7 +7,13 @@
   "scripts": {
     "dev": "concurrently \"bun run --cwd apps/client dev\"",
     "build": "bun run --cwd apps/client build",
-    "test:deepseek": "bun run --cwd apps/client test:deepseek"
+    "test:deepseek": "bun run --cwd apps/client test:deepseek",
+    "build:worker": "bun run --cwd apps/client build:worker",
+    "preview": "bun run --cwd apps/client preview",
+    "deploy": "bun run --cwd apps/client deploy",
+    "cf-typegen": "bun run --cwd apps/client cf-typegen",
+    "check:worker": "bun run --cwd apps/client check:worker",
+    "test:workers": "bun run --cwd apps/client test:workers"
   },
   "devDependencies": {
     "concurrently": "10.0.6",

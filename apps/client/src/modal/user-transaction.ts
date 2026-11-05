@@ -1,3 +1,4 @@
+import { scopedModel } from "@/lib/db";
 import mongoose, { Schema } from "mongoose";
 
 export const UsageTransactionTypes = ["CREDIT", "DEBIT", "REFUND"] as const;
@@ -45,6 +46,7 @@ const UsageTransactionSchema = new Schema(
 
 UsageTransactionSchema.index({ userId: 1, createdAt: -1 });
 
-export const UsageTransaction =
+export const UsageTransaction = scopedModel(
   mongoose.models.UsageTransaction ||
-  mongoose.model("UsageTransaction", UsageTransactionSchema);
+    mongoose.model("UsageTransaction", UsageTransactionSchema)
+);

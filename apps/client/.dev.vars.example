@@ -1,0 +1,13 @@
+# Copy to .dev.vars for Workers preview. Never commit real credentials.
+NEXTJS_ENV=production
+NEXT_PUBLIC_APP_BASE_URL=http://localhost:8787
+MONGODB_URI=mongodb+srv://USER:PASSWORD@CLUSTER/humanizer
+BETTER_AUTH_SECRET=replace-with-a-random-secret-at-least-32-characters
+GOOGLE_CLIENT_ID=replace-me
+GOOGLE_CLIENT_SECRET=replace-me
+DEEPSEEK_API_KEY=replace-me
+DEEPSEEK_MODEL=deepseek-flash
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+# Required for AI endpoints in production, including Workers preview.
+UPSTASH_REDIS_REST_URL=https://YOUR-DATABASE.upstash.io
+UPSTASH_REDIS_REST_TOKEN=replace-me

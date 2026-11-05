@@ -1,7 +1,9 @@
 ﻿import { z } from "zod";
 import { createEnv } from "@t3-oss/env-nextjs";
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
 
 export const env = createEnv({
+  emptyStringAsUndefined: true,
   server: {
     MONGODB_URI: z.string().min(1),
     NODE_ENV: z.string().min(1),
@@ -34,5 +36,8 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   },
-  skipValidation: !!process.env.SKIP_ENV_VALIDATION,
+  // Build without production secrets; validate again in the deployed runtime.
+  skipValidation:
+    process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD ||
+    !!process.env.SKIP_ENV_VALIDATION,
 });

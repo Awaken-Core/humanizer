@@ -1,3 +1,4 @@
+import { scopedModel } from "@/lib/db";
 import mongoose, { Schema } from "mongoose";
 
 const EMPTY_RICH_TEXT = {
@@ -115,9 +116,11 @@ const DocumentVersionSchema = new Schema(
 
 DocumentVersionSchema.index({ documentId: 1, version: 1 }, { unique: true });
 
-export const DocumentVersion =
+export const DocumentVersion = scopedModel(
   mongoose.models.DocumentVersion ||
-  mongoose.model("DocumentVersion", DocumentVersionSchema);
+    mongoose.model("DocumentVersion", DocumentVersionSchema)
+);
 
-export const Document =
-  mongoose.models.Document || mongoose.model("Document", DocumentSchema);
+export const Document = scopedModel(
+  mongoose.models.Document || mongoose.model("Document", DocumentSchema)
+);

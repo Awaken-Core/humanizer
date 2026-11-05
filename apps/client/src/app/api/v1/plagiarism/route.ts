@@ -1,3 +1,4 @@
+import { withDatabaseScope } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { checkPlagiarism, PlagiarismError } from "@/features/plagiarism";
@@ -20,7 +21,7 @@ import { PlagiarismReport } from "@/modal/plagiarism-report";
  * Thin endpoint orchestrating validation, rate-limiting, authentication, and
  * plagiarism analysis execution.
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   let jobId: string | undefined;
 
   try {
@@ -270,3 +271,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = withDatabaseScope(handlePOST);

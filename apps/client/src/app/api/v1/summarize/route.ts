@@ -1,3 +1,4 @@
+import { withDatabaseScope } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { HumanizerError } from "@/features/humanizer";
@@ -14,7 +15,7 @@ import {
   startAiJob,
 } from "@/lib/ai-request.server";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   let jobId: string | undefined;
   try {
     const contentType = req.headers.get("content-type") || "";
@@ -213,3 +214,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = withDatabaseScope(handlePOST);

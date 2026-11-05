@@ -150,7 +150,11 @@ export function PlagiarismView({
         }),
       });
 
-      const json = await res.json();
+      const json = (await res.json()) as {
+        success: boolean;
+        error?: { message?: string };
+        data: PairwiseComparisonResult;
+      };
       if (!res.ok || !json.success) {
         throw new Error(json.error?.message || "Pairwise comparison failed.");
       }

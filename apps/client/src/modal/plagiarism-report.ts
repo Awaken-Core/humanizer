@@ -1,3 +1,4 @@
+import { scopedModel } from "@/lib/db";
 import mongoose, { Schema } from "mongoose";
 
 /**
@@ -81,6 +82,7 @@ const PlagiarismReportSchema = new Schema(
 PlagiarismReportSchema.index({ userId: 1, createdAt: -1 });
 PlagiarismReportSchema.index({ anonymousId: 1, createdAt: -1 });
 
-export const PlagiarismReport =
+export const PlagiarismReport = scopedModel(
   (mongoose.models.PlagiarismReport as mongoose.Model<mongoose.InferSchemaType<typeof PlagiarismReportSchema>>) ||
-  mongoose.model("PlagiarismReport", PlagiarismReportSchema);
+    mongoose.model("PlagiarismReport", PlagiarismReportSchema)
+);

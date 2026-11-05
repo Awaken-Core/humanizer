@@ -1,3 +1,4 @@
+import { withDatabaseScope } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { getAuthenticatedDocumentUser } from "@/lib/document.server";
 import { AiJob } from "@/modal/ai";
@@ -37,7 +38,7 @@ function getOutput(job: StoredDocumentAiJob) {
   return job.status === "COMPLETED" ? "Analysis completed." : "Processing…";
 }
 
-export async function GET(
+async function handleGET(
   _request: Request,
   context: { params: Promise<{ documentId: string }> },
 ) {
@@ -115,7 +116,7 @@ export async function GET(
   }
 }
 
-export async function DELETE(
+async function handleDELETE(
   _request: Request,
   context: { params: Promise<{ documentId: string }> },
 ) {
@@ -168,3 +169,6 @@ export async function DELETE(
     );
   }
 }
+
+export const GET = withDatabaseScope(handleGET);
+export const DELETE = withDatabaseScope(handleDELETE);

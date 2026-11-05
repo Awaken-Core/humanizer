@@ -1,3 +1,4 @@
+import { scopedModel } from "@/lib/db";
 import { Schema, models, model } from "mongoose";
 
 const userSchema = new Schema(
@@ -72,9 +73,17 @@ const verificationSchema = new Schema(
   }
 );
 
-const Verification = models.Verification || model("Verification", verificationSchema);
-const Account = models.Account || model("Account", accountSchema);
-const Session = models.Session || model("Session", sessionSchema);
-const User = models.User || model("User", userSchema);
+const Verification = scopedModel(
+  models.Verification || model("Verification", verificationSchema)
+);
+const Account = scopedModel(
+  models.Account || model("Account", accountSchema)
+);
+const Session = scopedModel(
+  models.Session || model("Session", sessionSchema)
+);
+const User = scopedModel(
+  models.User || model("User", userSchema)
+);
 
 export { User, Session, Account, Verification };

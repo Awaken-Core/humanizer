@@ -1,11 +1,11 @@
 import "server-only";
 
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import { client } from "@/lib/db";
 
 export async function getAuthenticatedDocumentUser() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await (await getAuth()).api.getSession({ headers: await headers() });
   if (!session?.user?.id) return null;
 
   await client();

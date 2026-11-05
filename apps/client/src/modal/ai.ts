@@ -1,3 +1,4 @@
+import { scopedModel } from "@/lib/db";
 import mongoose, { Schema } from "mongoose";
 
 export const AiJobTypes = [
@@ -165,5 +166,6 @@ AiJobSchema.index(
   },
 );
 
-export const AiJob =
-  mongoose.models.AiJob || mongoose.model("AiJob", AiJobSchema);
+export const AiJob = scopedModel(
+  mongoose.models.AiJob || mongoose.model("AiJob", AiJobSchema)
+);

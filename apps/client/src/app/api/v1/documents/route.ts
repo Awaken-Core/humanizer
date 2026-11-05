@@ -1,3 +1,4 @@
+import { withDatabaseScope } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { Document, DocumentVersion } from "@/modal/document";
 import { CreateDocumentDto } from "@/features/documents/document.dto";
@@ -6,7 +7,7 @@ import {
   serializeDocument,
 } from "@/lib/document.server";
 
-export async function GET() {
+async function handleGET() {
   try {
     const user = await getAuthenticatedDocumentUser();
     if (!user) {
@@ -44,7 +45,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     const user = await getAuthenticatedDocumentUser();
     if (!user) {
@@ -116,3 +117,6 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const GET = withDatabaseScope(handleGET);
+export const POST = withDatabaseScope(handlePOST);

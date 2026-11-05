@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import type { NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAuth } from "@/lib/auth";
 import { client } from "@/lib/db";
 import { env } from "@/lib/env";
 import { AiJob } from "@/modal/ai";
@@ -30,7 +30,7 @@ function getClientIp(req: NextRequest): string {
 export async function getAiRequestContext(
   req: NextRequest,
 ): Promise<AiRequestContext> {
-  const session = await auth.api.getSession({ headers: req.headers });
+  const session = await (await getAuth()).api.getSession({ headers: req.headers });
   if (session?.user.id) {
     const requestedDocumentId = req.headers.get("x-document-id")?.trim();
     let documentId: string | undefined;

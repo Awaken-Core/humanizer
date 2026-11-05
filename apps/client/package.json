@@ -7,7 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:deepseek": "bun run scripts/test-deepseek.ts"
+    "test:deepseek": "bun run scripts/test-deepseek.ts",
+    "build:worker": "opennextjs-cloudflare build",
+    "preview": "bun run build:worker && opennextjs-cloudflare preview",
+    "deploy": "bun run build:worker && opennextjs-cloudflare deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "check:worker": "bun run build:worker && wrangler deploy --dry-run",
+    "test:workers": "bun test scripts/test-workers-db.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",
@@ -20,7 +26,8 @@
     "@dodopayments/nextjs": "0.3.10",
     "@hugeicons/core-free-icons": "4.4.0",
     "@hugeicons/react": "1.1.10",
-    "@next/third-parties": "16.4.4",
+    "@next/third-parties": "16.4.5",
+    "@opennextjs/cloudflare": "^1.20.16",
     "@t3-oss/env-nextjs": "^0.13.11",
     "@tanstack/react-query": "5.105.3",
     "@tanstack/react-table": "9.3.1",
@@ -64,10 +71,10 @@
     "jszip": "^3.10.2",
     "lenis": "1.3.27",
     "lucide-react": "1.66.0",
-    "mongodb": "7.8.0",
+    "mongodb": "7.7.0",
     "mongoose": "9.11.4",
     "motion": "14.9.0",
-    "next": "16.4.4",
+    "next": "16.4.5",
     "next-themes": "^0.4.6",
     "openai": "7.47.0",
     "posthog-js": "1.444.4",
@@ -97,9 +104,10 @@
     "@types/react-dom": "19.3.0",
     "dotenv": "18.0.9",
     "eslint": "10.14.0",
-    "eslint-config-next": "16.4.4",
+    "eslint-config-next": "16.4.5",
     "tailwindcss": "4.3.4",
     "tsx": "^4.23.15",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "wrangler": "^4.158.0"
   }
 }

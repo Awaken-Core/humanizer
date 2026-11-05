@@ -1,3 +1,4 @@
+import { withDatabaseScope } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { Document } from "@/modal/document";
 import {
@@ -9,7 +10,7 @@ import {
   serializeDocument,
 } from "@/lib/document.server";
 
-export async function PATCH(
+async function handlePATCH(
   request: Request,
   context: { params: Promise<{ documentId: string }> },
 ) {
@@ -72,3 +73,5 @@ export async function PATCH(
     data: { document: serializeDocument(document) },
   });
 }
+
+export const PATCH = withDatabaseScope(handlePATCH);

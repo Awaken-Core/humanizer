@@ -1,4 +1,9 @@
-import { auth } from "@/lib/auth";
-import { toNextJsHandler } from "better-auth/next-js";
+import { getAuth } from "@/lib/auth";
+import { withDatabaseScope } from "@/lib/db";
 
-export const { GET, POST } = toNextJsHandler(auth);
+const handler = withDatabaseScope(async (request: Request) => {
+  const auth = await getAuth();
+  return auth.handler(request);
+});
+
+export { handler as GET, handler as POST };

@@ -1,8 +1,9 @@
+import { withDatabaseScope } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { comparePairwise } from "@/features/plagiarism/plagiarism.pairwise";
 import { PairwiseRequestDto } from "@/features/plagiarism/plagiarism-pairwise.dto";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const contentType = req.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
@@ -61,3 +62,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = withDatabaseScope(handlePOST);

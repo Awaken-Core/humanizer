@@ -1,3 +1,4 @@
+import { withDatabaseScope } from "@/lib/db";
 import "server-only";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -18,7 +19,7 @@ import {
 export const runtime = "nodejs";
 export const maxDuration = 45;
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
+async function handlePOST(req: NextRequest): Promise<NextResponse> {
   const start = Date.now();
 
   // 1. Auth context
@@ -89,3 +90,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 }
+
+export const POST = withDatabaseScope(handlePOST);

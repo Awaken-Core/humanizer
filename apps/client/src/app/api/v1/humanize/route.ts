@@ -1,3 +1,4 @@
+import { withDatabaseScope } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/ratelimit";
 import { humanizeText, HumanizerError } from "@/features/humanizer";
@@ -17,7 +18,7 @@ import {
  * POST /api/humanize
  * Thin endpoint orchestrating validation, rate-limiting, authentication, and execution.
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   let jobId: string | undefined;
   try {
     // 1. Content-Type Validation
@@ -234,3 +235,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = withDatabaseScope(handlePOST);
