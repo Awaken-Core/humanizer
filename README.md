@@ -39,6 +39,8 @@ MongoDB connections and authentication initialize lazily within a request. API h
 
 ### Workers Builds (Git integration)
 
+`keep_vars: true` in `apps/client/wrangler.jsonc` preserves runtime variables managed in the Cloudflare dashboard during deployments, including automatic deployments from `main`. Restore any variables removed by earlier deployments once. Store credentials as runtime Secrets, and keep public build variables configured separately in Workers Builds. Avoid adding a `vars` block for dashboard-managed values; values declared in the configuration take precedence over dashboard values.
+
 Use repository root `/`, install command `bun install --frozen-lockfile`, build command `bun run build:worker`, and deploy command `cd apps/client && bunx opennextjs-cloudflare deploy`. Add public environment variables to build settings and runtime secrets to the Worker settings before deployment. The deploy command uses the bundle produced by the build step.
 
 Cloudflare's Node.js compatibility flag is enabled. [MongoDB runtime guidance](https://developers.cloudflare.com/workers/databases/third-party-integrations/mongodb/) describes connection and network requirements. Live MongoDB, Google OAuth, AI, and rate limiting need to be smoke-tested with your production services after deployment.

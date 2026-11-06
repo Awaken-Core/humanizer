@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "humanizer",
+  "keep_vars": true,
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-11-05",
   "compatibility_flags": [
