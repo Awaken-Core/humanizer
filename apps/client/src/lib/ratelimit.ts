@@ -23,8 +23,8 @@ let userRatelimit: Ratelimit | null = null;
 let ipRatelimit: Ratelimit | null = null;
 
 function getRedisInstance(): Redis | null {
-  const url = env.UPSTASH_REDIS_REST_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const token = env.UPSTASH_REDIS_REST_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  const url = env.UPSTASH_REDIS_REST_URL;
+  const token = env.UPSTASH_REDIS_REST_TOKEN;
 
   if (!url || !token) {
     return null;

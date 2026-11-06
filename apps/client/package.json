@@ -109,5 +109,13 @@
     "tsx": "^4.23.15",
     "typescript": "7.0.2",
     "wrangler": "^4.158.0"
-  }
+  },
+  "browserslist": [
+    "chrome >= 100",
+    "edge >= 100",
+    "firefox >= 100",
+    "safari >= 15.4",
+    "ios >= 15.4",
+    "not dead"
+  ]
 }

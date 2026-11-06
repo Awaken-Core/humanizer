@@ -1,0 +1,28 @@
+# Humanizer — Free AI Writing Assistant & Text Naturalization Engine
+
+> Humanizer is a zero-paywall, privacy-first writing workspace designed to transform AI-generated drafts into natural, human-sounding text while eliminating false positives from AI pattern detectors (Turnitin, GPTZero, CopyLeaks, ZeroGPT).
+
+## Core Capabilities
+- **AI Humanizer**: Naturalizes AI-generated phrasing and rhythm while preserving core facts, quotes, arguments, and data.
+- **AI Content Detector**: Analyzes text against multi-layer statistical indicators to identify mechanical phrasing.
+- **AI Paraphraser**: Rephrases sentences with tone and register adaptation (Academic, Professional, Natural, Casual).
+- **Summarizer**: Distills key insights from long documents and essays into concise, high-impact prose.
+- **Plagiarism Detector**: Scans potential overlap across web indices to guarantee academic and journalistic originality.
+- **Grammar & Accuracy**: Catches awkward syntax, improves diction, and polishes drafts before publication.
+
+## Key Features & Guarantees
+- **100% Free Forever**: No 125-word paywalls, no mandatory credit card or subscriptions.
+- **Privacy First (Zero Data Retention)**: Texts and documents are processed statelessly in-memory. User drafts are never saved, logged, or used to train third-party AI models.
+- **High Word Limits**: Free tier handles long-form content up to 15,000 characters per request.
+- **Meaning Preservation**: Fact-retention guardrails ensure citations, numbers, and technical terminology remain accurate.
+
+## Canonical Pages & Architecture
+- Workspace: /workspace
+- How It Works: /how-it-works
+- Frequently Asked Questions: /faq
+- About & Mission: /about
+- QuillBot Alternative Guide: /compare/quillbot-alternative
+- StealthGPT Alternative Guide: /compare/stealthgpt-alternative
+- Privacy Policy: /privacy
+- Terms of Service: /terms
+

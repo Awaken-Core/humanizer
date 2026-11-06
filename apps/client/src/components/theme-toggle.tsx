@@ -15,7 +15,18 @@ export function ModeToggle() {
     }, [])
 
     if (!mounted) {
-        return null
+        return (
+            <Button
+                type="button"
+                aria-label="Toggle theme"
+                size={"icon-sm"}
+                variant="outline"
+                className="z-10 rounded-full border-slate-200 bg-white text-slate-900 pointer-events-none dark:border-neutral-700 dark:bg-neutral-900"
+                tabIndex={-1}
+            >
+                <span className="h-5 w-5 block" aria-hidden="true" />
+            </Button>
+        )
     }
 
     return (

@@ -28,7 +28,7 @@ export interface DeepSeekClientOptions {
  * Validates DEEPSEEK_API_KEY when first called.
  */
 export function getDeepSeekClient(options?: DeepSeekClientOptions): OpenAI {
-  const apiKey = env.DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY;
+  const apiKey = env.DEEPSEEK_API_KEY;
 
   if (!apiKey) {
     throw new Error(

@@ -708,9 +708,15 @@
   color: var(--muted);
 }
 .liveBadge {
-  color: #6666ff;
-  border-color: #6666ff40;
-  background: #0000ff08;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+  background: #eff6ff;
+  font-weight: 500;
+}
+:global(.dark) .liveBadge {
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.4);
+  background: rgba(59, 130, 246, 0.15);
 }
 .serviceNumber {
   font-size: 11px;
