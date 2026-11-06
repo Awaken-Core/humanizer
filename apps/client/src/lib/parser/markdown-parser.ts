@@ -58,7 +58,7 @@ export function maskMarkdown(markdown: string): MarkdownMaskResult {
   let text = markdown;
 
   // 1. Frontmatter (YAML at document start)
-  text = text.replace(/^---[\r\n]+[\s\S]*?[\r\n]+---/m, (match) => {
+  text = text.replace(/^---[\r\n]+[\s\S]*?[\r\n]+---/, (match) => {
     stats.frontmatterCount++;
     return createPlaceholder(match);
   });
@@ -76,11 +76,11 @@ export function maskMarkdown(markdown: string): MarkdownMaskResult {
   });
 
   // 4. HTML Elements (<div ...> ... </div> or self-closing <img ... />)
-  text = text.replace(/<([a-zA-Z1-6]+)(?:\s+[^>]*)?>[\s\S]*?<\/\1>/g, (match) => {
+  text = text.replace(/<([a-zA-Z0-9]+)(?:\s+[^>]*)?>[\s\S]*?<\/\1>/gi, (match) => {
     stats.htmlCount++;
     return createPlaceholder(match);
   });
-  text = text.replace(/<[a-zA-Z1-6]+(?:\s+[^>]*)?\/>/g, (match) => {
+  text = text.replace(/<[a-zA-Z0-9]+[^>]*\/>/g, (match) => {
     stats.htmlCount++;
     return createPlaceholder(match);
   });
@@ -92,7 +92,7 @@ export function maskMarkdown(markdown: string): MarkdownMaskResult {
   });
 
   // 6. Link URLs: [anchor text](https://example.com/url) -> preserve anchor text, mask URL
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, anchorText, url) => {
+  text = text.replace(/\[([^\]\r\n]+)\]\(([^)\r\n\s]+)\)/g, (_match, anchorText, url) => {
     stats.linkCount++;
     const urlPlaceholder = createPlaceholder(`(${url})`);
     return `[${anchorText}]${urlPlaceholder}`;
@@ -146,8 +146,8 @@ export function extractMarkdownProse(markdown: string): string {
     // Remove blockquote arrows (>)
     .replace(/^>\s+/gm, "")
     // Remove list markers (*, -, +, 1.)
-    .replace(/^[\s]*[-*+]\s+/gm, "")
-    .replace(/^[\s]*\d+\.\s+/gm, "")
+    .replace(/^[ \t]*[-*+]\s+/gm, "")
+    .replace(/^[ \t]*\d+\.\s+/gm, "")
     // Remove bold/italics markers
     .replace(/(\*\*|__)(.*?)\1/g, "$2")
     .replace(/(\*|_)(.*?)\1/g, "$2")

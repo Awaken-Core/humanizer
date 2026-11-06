@@ -120,7 +120,7 @@ function matchCase(original: string, replacement: string): string {
  * watermarks or artefacts: U+200B, U+200C, U+200D, U+2060, U+FEFF.
  */
 function purgeZeroWidthChars(text: string): { text: string; count: number } {
-  const zeroWidthRe = /[\u200B\u200C\u200D\u2060\uFEFF]/g;
+  const zeroWidthRe = /\u200B|\u200C|\u200D|\u2060|\uFEFF/g;
   let count = 0;
   const result = text.replace(zeroWidthRe, () => {
     count++;

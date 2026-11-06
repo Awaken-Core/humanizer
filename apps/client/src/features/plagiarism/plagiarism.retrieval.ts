@@ -180,8 +180,8 @@ export async function searchWeb(
 // ---------------------------------------------------------------------------
 
 /** Regex patterns for HTML stripping */
-const SCRIPT_STYLE_REGEX =
-  /<(?:script|style)[^>]*>[\s\S]*?<\/(?:script|style)>/gi;
+const SCRIPT_REGEX = /<script\b[^>]*>[\s\S]*?<\/script>/gi;
+const STYLE_REGEX = /<style\b[^>]*>[\s\S]*?<\/style>/gi;
 const HTML_TAG_REGEX = /<[^>]+>/g;
 const HTML_ENTITY_REGEX = /&(?:#\d+|#x[\da-fA-F]+|[a-zA-Z]+);/g;
 const MAX_PAGE_TEXT_LENGTH = 50_000;
@@ -235,7 +235,8 @@ export async function fetchPageText(url: string): Promise<string> {
 
     // Strip scripts and style blocks first
     const stripped = html
-      .replace(SCRIPT_STYLE_REGEX, " ")
+      .replace(SCRIPT_REGEX, " ")
+      .replace(STYLE_REGEX, " ")
       .replace(HTML_TAG_REGEX, " ")
       .replace(HTML_ENTITY_REGEX, (entity) => HTML_ENTITIES[entity] ?? " ")
       .replace(/\s+/g, " ")

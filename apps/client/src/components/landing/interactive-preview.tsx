@@ -54,6 +54,7 @@ export function InteractivePreview() {
           }
         }}
         role="tablist"
+        tabIndex={0}
         aria-label="Explore writing tools"
       >
         {tools.map((tool, i) => (

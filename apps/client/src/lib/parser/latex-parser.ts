@@ -65,7 +65,7 @@ export function maskLatex(latex: string): LatexMaskResult {
   let text = latex;
 
   // 1. Protect Comments (% ... to end of line, avoiding escaped \%)
-  text = text.replace(/(?<!\\)%.*$/gm, (match) => {
+  text = text.replace(/(?<!\\)%[^\r\n]*/g, (match) => {
     stats.commentCount++;
     return createPlaceholder(match);
   });

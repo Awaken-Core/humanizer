@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   ArrowRight,
@@ -62,7 +64,7 @@ function SectionTitle({
 
 export default function HomePage() {
   return (
-    <div className={styles.site} id="home">
+    <div className={styles.site} id="home" suppressHydrationWarning>
       <SiteHeader />
 
       <main className={styles.frame}>

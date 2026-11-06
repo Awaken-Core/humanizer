@@ -40,7 +40,7 @@ export interface DocxParseResult {
  */
 export function purgeZeroWidthUnicode(text: string): { cleaned: string; count: number } {
   let count = 0;
-  const cleaned = text.replace(/[\u200B\u200C\u200D\u2060\uFEFF]/g, () => {
+  const cleaned = text.replace(/\u200B|\u200C|\u200D|\u2060|\uFEFF/g, () => {
     count++;
     return "";
   });

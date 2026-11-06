@@ -343,7 +343,7 @@ export function shieldCitations(
     options.maxCitations ?? Math.max(1, Math.min(bank.length, Math.floor(wordCount / 120)));
 
   // Split text into sentences while tracking positions
-  const sentenceRegex = /([^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$)/g;
+  const sentenceRegex = /[^.!?]+(?:[.!?]+(?:\s+|$)|$)/g;
   const sentences: Array<{ text: string; start: number; end: number }> = [];
   let sMatch: RegExpExecArray | null;
 
@@ -380,12 +380,13 @@ export function shieldCitations(
       // Optimal boundary point: right before the terminal punctuation of the sentence,
       // or at the end of the major independent clause
       let shieldedSentence = s.text;
-      const punctMatch = /([.,!?;]+)(\s*)$/.exec(s.text);
+      const trimmedEnd = s.text.trimEnd();
+      const trailingSpace = s.text.slice(trimmedEnd.length);
+      const punctMatch = /([.,!?;]+)$/.exec(trimmedEnd);
 
       if (punctMatch && punctMatch.index !== undefined) {
         const punctuation = punctMatch[1];
-        const trailingSpace = punctMatch[2];
-        const body = s.text.slice(0, punctMatch.index).trimEnd();
+        const body = trimmedEnd.slice(0, punctMatch.index).trimEnd();
 
         // In IEEE and LaTeX, marker goes before or after punctuation depending on style:
         // LaTeX: "... \cite{key}."

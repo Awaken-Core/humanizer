@@ -2,7 +2,9 @@ import type { MetadataRoute } from "next";
 import { env } from "@/lib/env";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = env.NEXT_PUBLIC_APP_BASE_URL.replace(/\/+$/, "");
+  const baseUrl = env.NEXT_PUBLIC_APP_BASE_URL.endsWith("/")
+    ? env.NEXT_PUBLIC_APP_BASE_URL.slice(0, -1)
+    : env.NEXT_PUBLIC_APP_BASE_URL;
   const now = new Date();
 
   const routes = [

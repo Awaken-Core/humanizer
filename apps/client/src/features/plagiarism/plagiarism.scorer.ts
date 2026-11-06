@@ -277,7 +277,7 @@ interface SentenceWithOffsets {
  */
 function splitSentences(text: string): SentenceWithOffsets[] {
   const sentences: SentenceWithOffsets[] = [];
-  const sentenceRegex = /[^.!?]*[.!?]+/g;
+  const sentenceRegex = /[^.!?]+[.!?]*/g;
   let match: RegExpExecArray | null;
 
   while ((match = sentenceRegex.exec(text)) !== null) {

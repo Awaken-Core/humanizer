@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
-import Script from "next/script";
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 import Providers from "@/components/provider";
 import { env } from "@/lib/env";
@@ -120,37 +120,35 @@ export default function RootLayout({
     >
       <head>
         <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  if (typeof Element !== 'undefined') {
+                    var origSet = Element.prototype.setAttribute;
+                    Element.prototype.setAttribute = function(name, val) {
+                      if (name === 'bis_skin_checked') return;
+                      return origSet.apply(this, arguments);
+                    };
+                  }
+                  if (typeof document !== 'undefined') {
+                    var clean = function() {
+                      var els = document.querySelectorAll('[bis_skin_checked]');
+                      for (var i = 0; i < els.length; i++) {
+                        els[i].removeAttribute('bis_skin_checked');
+                      }
+                    };
+                    document.addEventListener('DOMContentLoaded', clean, { once: true });
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+        <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        {env.NODE_ENV === "development" && (
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `
-                (function() {
-                  try {
-                    if (typeof Element !== 'undefined') {
-                      var origSet = Element.prototype.setAttribute;
-                      Element.prototype.setAttribute = function(name, val) {
-                        if (name === 'bis_skin_checked') return;
-                        return origSet.apply(this, arguments);
-                      };
-                    }
-                    if (typeof document !== 'undefined') {
-                      var clean = function() {
-                        var els = document.querySelectorAll('[bis_skin_checked]');
-                        for (var i = 0; i < els.length; i++) {
-                          els[i].removeAttribute('bis_skin_checked');
-                        }
-                      };
-                      document.addEventListener('DOMContentLoaded', clean, { once: true });
-                    }
-                  } catch(e) {}
-                })();
-              `,
-            }}
-          />
-        )}
       </head>
       <body
         className="bg-background font-sans text-foreground antialiased"
@@ -158,22 +156,7 @@ export default function RootLayout({
       >
         <Providers>{children}</Providers>
         {env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
-          <>
-            <Script
-              strategy="lazyOnload"
-              src={`https://www.googletagmanager.com/gtag/js?id=${env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`}
-            />
-            <Script id="google-analytics-init" strategy="lazyOnload">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', '${env.NEXT_PUBLIC_GA_MEASUREMENT_ID}', {
-                  page_path: window.location.pathname,
-                });
-              `}
-            </Script>
-          </>
+          <GoogleAnalytics gaId={env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
         )}
       </body>
     </html>

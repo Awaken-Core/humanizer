@@ -202,7 +202,7 @@ export async function comparePairwise(
 
   // 5. Paraphrase detection: sentences in Doc A that have high cosine overlap with Doc B but aren't identical
   let paraphrasedCharCount = 0;
-  const sentenceRegex = /[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g;
+  const sentenceRegex = /[^.!?]+(?:[.!?]+(?:\s+|$)|$)/g;
   let sMatch: RegExpExecArray | null;
 
   while ((sMatch = sentenceRegex.exec(docA)) !== null) {

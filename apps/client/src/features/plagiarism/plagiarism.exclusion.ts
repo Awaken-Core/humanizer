@@ -11,7 +11,7 @@ const QUOTE_REGEX = /(?:[""])[^"""]{10,}(?:[""])/g;
 const APA_CITATION_REGEX = /\([A-Z][a-zA-ZÀ-ÖØ-öø-ÿ\s,&.]+,\s*\d{4}(?:,\s*p{1,2}\.\s*\d+(?:–\d+)?)?\)/g;
 
 /** MLA in-text citation: (Author 45) or (Author 12-15) */
-const MLA_CITATION_REGEX = /\([A-Z][a-zA-ZÀ-ÖØ-öø-ÿ\s]+\s+\d+(?:[-–]\d+)?\)/g;
+const MLA_CITATION_REGEX = /\([A-Z][a-zA-ZÀ-ÖØ-öø-ÿ]+(?:\s+[a-zA-ZÀ-ÖØ-öø-ÿ]+)*\s+\d+(?:[-–]\d+)?\)/g;
 
 /** IEEE numeric citation: [1] or [1-4] or [1, 2, 3] */
 const IEEE_CITATION_REGEX = /\[\d+(?:[,\s\-–]+\d+)*\]/g;

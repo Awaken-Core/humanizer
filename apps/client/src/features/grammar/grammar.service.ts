@@ -49,7 +49,7 @@ function runDeterministicGrammarChecks(text: string): GrammarIssue[] {
   }
 
   // 3. Space before punctuation
-  const spaceBeforePunctRegex = /\s+([,.;:!?])/g;
+  const spaceBeforePunctRegex = /[ \t]+([,.;:!?])/g;
   while ((match = spaceBeforePunctRegex.exec(text)) !== null) {
     issues.push({
       startChar: match.index,

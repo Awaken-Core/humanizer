@@ -44,7 +44,7 @@ function countWords(text: string): number {
  */
 function countSentences(text: string): number {
   if (!text.trim()) return 0;
-  const matches = text.match(/[^.!?]*[.!?]+/g);
+  const matches = text.match(/[^.!?]+[.!?]*/g);
   return Math.max(1, matches?.length ?? 1);
 }
 

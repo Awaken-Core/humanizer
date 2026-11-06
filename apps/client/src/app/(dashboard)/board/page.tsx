@@ -238,19 +238,29 @@ export default function BoardPage() {
                     settings flow.
                   </p>
                 </div>
-                <label className={styles.settingRow}>
+                <label htmlFor="smart-suggestions-checkbox" className={styles.settingRow}>
                   <span>
                     <strong>Smart suggestions</strong>
                     <small>Show writing recommendations while editing.</small>
                   </span>
-                  <input type="checkbox" defaultChecked />
+                  <input
+                    id="smart-suggestions-checkbox"
+                    type="checkbox"
+                    defaultChecked
+                    aria-label="Smart suggestions"
+                  />
                 </label>
-                <label className={styles.settingRow}>
+                <label htmlFor="auto-save-drafts-checkbox" className={styles.settingRow}>
                   <span>
                     <strong>Auto-save drafts</strong>
                     <small>Keep changes locally while you write.</small>
                   </span>
-                  <input type="checkbox" defaultChecked />
+                  <input
+                    id="auto-save-drafts-checkbox"
+                    type="checkbox"
+                    defaultChecked
+                    aria-label="Auto-save drafts"
+                  />
                 </label>
               </section>
             ) : (
@@ -324,7 +334,7 @@ export default function BoardPage() {
                       className={`${styles.documentGrid} ${view === "list" ? styles.listView : ""}`}
                     >
                       {visibleDocuments.map((document) => (
-                        <article
+                        <div
                           className={styles.documentCard}
                           key={document.id}
                           role="link"
@@ -445,7 +455,7 @@ export default function BoardPage() {
                               )}
                             </span>
                           </div>
-                        </article>
+                        </div>
                       ))}
                     </div>
                   ) : (
