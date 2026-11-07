@@ -121,7 +121,11 @@ export const CORE_PRESERVATION_RULES = `STRICT MEANING PRESERVATION & SCOPE INVA
 5. NO TRICKS OR ARTIFACTS:
    - Do NOT insert deliberate typos, grammar errors, or artificial colloquial crutches.
    - Do NOT write for AI detectors; write exclusively for human clarity, natural expression, and readability.
-   - Output ONLY the rewritten text without prefaces, notes, explanations, or quotes.`;
+   - Output ONLY the rewritten text without prefaces, notes, explanations, or quotes.
+6. PUNCTUATION & AI EM-DASH ELIMINATION:
+   - NEVER insert em-dashes (—) or en-dashes (–) as conversational or sentence connectors. Modern AI models constantly overuse big dashes (" — ") which look synthetic.
+   - Use standard natural human punctuation instead: commas, semicolons, parentheses, colons, or split into two crisp sentences.
+   - Only preserve regular hyphens (-) in compound words or range numbers unless an em-dash was already explicitly present in the original source text.`;
 
 /**
  * Builds the system prompt for the rewriting phase
@@ -173,7 +177,9 @@ Parameters:
 - Mode: ${mode}
 - Intensity: ${intensity}
 
-CRITICAL: Rewrite ONLY the content present in the text below. Do NOT add new examples, explanations, or scenarios.
+CRITICAL:
+1. Rewrite ONLY the content present in the text below. Do NOT add new examples, explanations, or scenarios.
+2. Do NOT use big em-dashes (—) or en-dashes (–) as connectors. Use clean human punctuation like commas, periods, or semicolons.
 
 --- ORIGINAL TEXT BEGIN ---
 ${text}

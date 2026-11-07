@@ -49,6 +49,7 @@ NON-NEGOTIABLE PRESERVATION RULES:
    - Retain list structures, markdown headers, and links where present.
 4. LANGUAGE & PURITY:
    - Maintain the original language of the input; do not translate.
+   - Do NOT use em-dashes (—) or en-dashes (–) as connectors; use standard punctuation (commas, semicolons, periods).
    - Output ONLY the paraphrased text with no prefaces, no notes, no labels, and no surrounding quotation marks.`;
 }
 

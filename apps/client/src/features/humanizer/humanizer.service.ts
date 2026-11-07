@@ -24,9 +24,42 @@ function normalizeInputText(text: string): string {
 }
 
 /**
+ * Replaces unprompted AI em-dashes / en-dashes with natural human punctuation
+ * unless the original input text specifically used them.
+ */
+function sanitizeAiDashes(rewrittenText: string, originalText: string): string {
+  // If original input didn't contain em-dash (—) or spaced en-dash ( – ), clean them out of the result
+  const originalHadEmDash = /\u2014/.test(originalText);
+  const originalHadEnDash = / \u2013 /.test(originalText);
+
+  let cleaned = rewrittenText;
+
+  if (!originalHadEmDash) {
+    // Replace " — " or "—" connectors with natural punctuation
+    cleaned = cleaned.replace(/ ?\u2014 ?/g, (match, offset, str) => {
+      // Check surrounding context: if before lowercase, usually a comma or semicolon
+      const nextChar = str[offset + match.length];
+      if (nextChar && /[A-Z]/.test(nextChar)) {
+        return ". ";
+      }
+      return ", ";
+    });
+    // Clean up potential duplicate commas or comma-periods
+    cleaned = cleaned.replace(/,\s*,/g, ",").replace(/,\s*\./g, ".").replace(/\s+/g, " ");
+  }
+
+  if (!originalHadEnDash) {
+    cleaned = cleaned.replace(/ \u2013 /g, ", ");
+    cleaned = cleaned.replace(/,\s*,/g, ",").replace(/,\s*\./g, ".").replace(/\s+/g, " ");
+  }
+
+  return cleaned;
+}
+
+/**
  * Normalizes rewritten output by stripping unnecessary conversational framing if returned.
  */
-function normalizeOutputText(text: string): string {
+function normalizeOutputText(text: string, originalText?: string): string {
   let cleaned = text.trim();
 
   // Strip accidental outer quotes if model enclosed whole response in quotes
@@ -42,6 +75,10 @@ function normalizeOutputText(text: string): string {
     /^(?:Here is (?:the )?(?:rewritten|humanized) (?:text|version):\s*|Rewritten:\s*)/i,
     ""
   );
+
+  if (originalText) {
+    cleaned = sanitizeAiDashes(cleaned, originalText);
+  }
 
   return cleaned.trim();
 }
@@ -95,7 +132,7 @@ export async function humanizeText(
   );
 
   // 6. Output Normalization
-  const finalHumanizedText = normalizeOutputText(restoredText);
+  const finalHumanizedText = normalizeOutputText(restoredText, text);
   const totalDurationMs = Date.now() - startTime;
 
   // 7. Aggregate Token Metadata

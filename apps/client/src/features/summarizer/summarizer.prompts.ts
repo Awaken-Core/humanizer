@@ -35,6 +35,7 @@ NON-NEGOTIABLE RULES:
 - Preserve the source language; do not translate.
 - Preserve uncertainty and attribution. Do not present a claim as fact when the source does not.
 - Prefer coherent paragraphs, but retain a list when it is the clearest representation of the source.
+- Do NOT use em-dashes (—) or en-dashes (–) as connectors; use standard punctuation (commas, semicolons, periods).
 - Output only the summary, with no preface, label, commentary, or surrounding quotation marks.`;
 }
 
