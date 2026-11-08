@@ -15,6 +15,9 @@ import {
 } from "@/lib/ai-request.server";
 import { client } from "@/lib/db";
 import { PlagiarismReport } from "@/modal/plagiarism-report";
+import { createNormalizedErrorResponse } from "@/lib/server-error";
+
+export const maxDuration = 60;
 
 /**
  * POST /api/v1/plagiarism
@@ -22,22 +25,19 @@ import { PlagiarismReport } from "@/modal/plagiarism-report";
  * plagiarism analysis execution.
  */
 async function handlePOST(req: NextRequest) {
+  const requestId = crypto.randomUUID();
   let jobId: string | undefined;
 
   try {
     // 1. Content-Type Validation
     const contentType = req.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "UNSUPPORTED_MEDIA_TYPE",
-            message: "Content-Type must be application/json.",
-          },
-        },
-        { status: 415 },
-      );
+      return createNormalizedErrorResponse(new Error("Content-Type must be application/json."), {
+        tool: "plagiarism-checker",
+        requestId,
+        status: 415,
+        overrideCode: "UNSUPPORTED_MEDIA_TYPE",
+      });
     }
 
     // 2. Parse JSON Body
@@ -45,16 +45,12 @@ async function handlePOST(req: NextRequest) {
     try {
       body = await req.json();
     } catch {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "INVALID_JSON",
-            message: "Request body contains invalid or malformed JSON.",
-          },
-        },
-        { status: 400 },
-      );
+      return createNormalizedErrorResponse(new Error("Request body contains invalid or malformed JSON."), {
+        tool: "plagiarism-checker",
+        requestId,
+        status: 400,
+        overrideCode: "INVALID_JSON",
+      });
     }
 
     // 3. Auth context + length limit selection
@@ -72,16 +68,13 @@ async function handlePOST(req: NextRequest) {
         issue?.code === "too_big" ||
         message.includes(maxInputLength.toLocaleString());
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: isLengthError ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR",
-            message,
-          },
-        },
-        { status: isLengthError ? 413 : 400 },
-      );
+      return createNormalizedErrorResponse(new Error(message), {
+        tool: "plagiarism-checker",
+        requestId,
+        status: isLengthError ? 413 : 400,
+        overrideCode: isLengthError ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR",
+        overrideMessage: message,
+      });
     }
 
     // 4. Rate limiting
@@ -91,17 +84,13 @@ async function handlePOST(req: NextRequest) {
     );
 
     if (rateLimit.serviceUnavailable) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "SERVICE_UNAVAILABLE",
-            message:
-              "Rate limiting service is temporarily unavailable. Request blocked for system protection.",
-          },
-        },
-        { status: 503 },
-      );
+      return createNormalizedErrorResponse(new Error("Rate limiting service unavailable."), {
+        tool: "plagiarism-checker",
+        requestId,
+        status: 503,
+        overrideCode: "SERVICE_UNAVAILABLE",
+        overrideMessage: "Rate limiting service is temporarily unavailable. Please try again shortly.",
+      });
     }
 
     if (!rateLimit.success) {
@@ -109,24 +98,14 @@ async function handlePOST(req: NextRequest) {
         1,
         Math.ceil((rateLimit.reset - Date.now()) / 1000),
       );
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "RATE_LIMIT_EXCEEDED",
-            message: `Too many requests. Please try again in ${retryAfterSec} seconds.`,
-          },
-        },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(retryAfterSec),
-            "X-RateLimit-Limit": String(rateLimit.limit),
-            "X-RateLimit-Remaining": String(rateLimit.remaining),
-            "X-RateLimit-Reset": String(rateLimit.reset),
-          },
-        },
-      );
+      return createNormalizedErrorResponse(new Error("Rate limit exceeded."), {
+        tool: "plagiarism-checker",
+        requestId,
+        status: 429,
+        overrideCode: "APP_RATE_LIMIT_EXCEEDED",
+        overrideMessage: `Too many requests. Please try again in ${retryAfterSec} seconds.`,
+        retryAfter: retryAfterSec,
+      });
     }
 
     // 5. Start AI job
@@ -222,53 +201,11 @@ async function handlePOST(req: NextRequest) {
     );
   } catch (error: unknown) {
     if (jobId) await failAiJob(jobId, error);
-
-    // Map PlagiarismError subclasses to their status codes
-    if (error instanceof PlagiarismError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: error.code,
-            message: error.message,
-          },
-        },
-        { status: error.status },
-      );
-    }
-
-    // Timeout detection
-    const errMessage = error instanceof Error ? error.message : String(error);
-    if (
-      errMessage.toLowerCase().includes("timeout") ||
-      errMessage.toLowerCase().includes("timed out")
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "PLAGIARISM_TIMEOUT",
-            message:
-              "The plagiarism check timed out. Please try again with shorter text.",
-          },
-        },
-        { status: 504 },
-      );
-    }
-
-    console.error("Unhandled error in /api/v1/plagiarism:", errMessage);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: "INTERNAL_SERVER_ERROR",
-          message:
-            "An unexpected error occurred while processing your request.",
-        },
-      },
-      { status: 500 },
-    );
+    return createNormalizedErrorResponse(error, {
+      tool: "plagiarism-checker",
+      requestId,
+      status: error instanceof PlagiarismError ? error.status : undefined,
+    });
   }
 }
 

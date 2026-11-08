@@ -1,5 +1,7 @@
 import { withDatabaseScope } from "@/lib/db";
-import "server-only";
+if (typeof window !== "undefined") {
+  throw new Error("This module can only be executed on the server.");
+}
 
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -15,64 +17,79 @@ import {
   ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
   AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
 } from "@/features/humanizer/humanizer.dto";
+import { createNormalizedErrorResponse } from "@/lib/server-error";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
 
 async function handlePOST(req: NextRequest): Promise<NextResponse> {
+  const requestId = crypto.randomUUID();
   const start = Date.now();
+  let jobId: string | undefined;
 
-  // 1. Auth context
-  const context = await getAiRequestContext(req);
-
-  // 2. Rate limiting
-  const rateLimitResult = await checkRateLimit(
-    context.rateLimitIdentifier,
-    context.isAuthenticated,
-  );
-  if (!rateLimitResult.success) {
-    return NextResponse.json(
-      {
-        error:
-          "Rate limit exceeded. Please wait before submitting another grammar check.",
-        retryAfter: rateLimitResult.reset,
-      },
-      { status: 429 },
-    );
-  }
-
-  // 3. Parse & validate JSON body
-  let body: unknown;
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json(
-      { error: "Invalid JSON in request body." },
-      { status: 400 },
+    // 1. Auth context
+    const context = await getAiRequestContext(req);
+
+    // 2. Rate limiting
+    const rateLimitResult = await checkRateLimit(
+      context.rateLimitIdentifier,
+      context.isAuthenticated,
     );
-  }
+    if (!rateLimitResult.success) {
+      const retryAfterSec = Math.max(
+        1,
+        Math.ceil((rateLimitResult.reset - Date.now()) / 1000),
+      );
+      return createNormalizedErrorResponse(new Error("Rate limit exceeded."), {
+        tool: "grammar-checker",
+        requestId,
+        status: 429,
+        overrideCode: "APP_RATE_LIMIT_EXCEEDED",
+        overrideMessage: `Too many requests. Please try again in ${retryAfterSec} seconds.`,
+        retryAfter: retryAfterSec,
+      });
+    }
 
-  const maxLength = context.isAuthenticated
-    ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
-    : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
+    // 3. Parse & validate JSON body
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return createNormalizedErrorResponse(new Error("Invalid JSON in request body."), {
+        tool: "grammar-checker",
+        requestId,
+        status: 400,
+        overrideCode: "INVALID_JSON",
+      });
+    }
 
-  const schema = createGrammarInputDto(maxLength);
-  const parsed = schema.safeParse(body);
-  if (!parsed.success) {
-    const message =
-      parsed.error.issues[0]?.message ?? "Invalid request payload.";
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
+    const maxLength = context.isAuthenticated
+      ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
+      : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
 
-  // 4. Record job
-  const jobId = await startAiJob({
-    context,
-    type: "GRAMMAR_CHECKER",
-    input: { text: parsed.data.text },
-  });
+    const schema = createGrammarInputDto(maxLength);
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      const message =
+        parsed.error.issues[0]?.message ?? "Invalid request payload.";
+      return createNormalizedErrorResponse(new Error(message), {
+        tool: "grammar-checker",
+        requestId,
+        status: 400,
+        overrideCode: "VALIDATION_ERROR",
+        overrideMessage: message,
+      });
+    }
 
-  // 5. Execute grammar check
-  try {
+    // 4. Record job
+    jobId = await startAiJob({
+      context,
+      type: "GRAMMAR_CHECKER",
+      input: { text: parsed.data.text },
+    });
+
+    // 5. Execute grammar check (has internal deterministic fallback if LLM times out)
     const result = await checkGrammar({ text: parsed.data.text });
 
     await completeAiJob(jobId, result, {
@@ -80,14 +97,19 @@ async function handlePOST(req: NextRequest): Promise<NextResponse> {
       durationMs: Date.now() - start,
     });
 
-    return NextResponse.json({ success: true, data: result }, { status: 200 });
-  } catch (error) {
-    await failAiJob(jobId, error);
-    console.error("[/api/v1/grammar] Unexpected error:", error);
     return NextResponse.json(
-      { error: "An unexpected error occurred during grammar checking." },
-      { status: 500 },
+      { success: true, data: result },
+      {
+        status: 200,
+        headers: { "X-Request-Id": requestId },
+      },
     );
+  } catch (error) {
+    if (jobId) await failAiJob(jobId, error);
+    return createNormalizedErrorResponse(error, {
+      tool: "grammar-checker",
+      requestId,
+    });
   }
 }
 

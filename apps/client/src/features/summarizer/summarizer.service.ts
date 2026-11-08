@@ -36,7 +36,7 @@ async function generateSummary(
   mode: SummarizeTextResult["selectedMode"],
   intensity: SummarizeTextResult["selectedIntensity"]
 ): Promise<SummaryGenerationResult> {
-  const client = getDeepSeekClient();
+  const client = getDeepSeekClient({ timeoutMs: 25_000, maxRetries: 1 });
   const model = DEEPSEEK_CONFIG.defaultModel;
 
   try {
@@ -60,7 +60,7 @@ async function generateSummary(
     const summaryText = response.choices[0]?.message?.content?.trim();
     if (!summaryText) {
       throw new HumanizerError(
-        "DeepSeek returned an empty summary.",
+        "Summarization engine returned an empty result.",
         "SUMMARIZATION_FAILED",
         502
       );
@@ -76,10 +76,10 @@ async function generateSummary(
     if (error instanceof HumanizerError) throw error;
 
     const message =
-      error instanceof Error ? error.message : "Unknown summarization error";
+      error instanceof Error ? error.message : "Error during summarization";
     const status = (error as { status?: number })?.status ?? 502;
     throw new ProviderApiError(
-      `DeepSeek summarization request failed: ${message}`,
+      `Summarization request failed: ${message}`,
       status,
       error
     );

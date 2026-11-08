@@ -1,4 +1,6 @@
-import "server-only";
+if (typeof window !== "undefined") {
+  throw new Error("This module can only be executed on the server.");
+}
 
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";

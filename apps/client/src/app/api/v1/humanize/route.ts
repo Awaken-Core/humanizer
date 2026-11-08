@@ -13,27 +13,27 @@ import {
   getAiRequestContext,
   startAiJob,
 } from "@/lib/ai-request.server";
+import { createNormalizedErrorResponse } from "@/lib/server-error";
+
+export const maxDuration = 60;
 
 /**
  * POST /api/humanize
  * Thin endpoint orchestrating validation, rate-limiting, authentication, and execution.
  */
 async function handlePOST(req: NextRequest) {
+  const requestId = crypto.randomUUID();
   let jobId: string | undefined;
   try {
     // 1. Content-Type Validation
     const contentType = req.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "UNSUPPORTED_MEDIA_TYPE",
-            message: "Content-Type must be application/json.",
-          },
-        },
-        { status: 415 },
-      );
+      return createNormalizedErrorResponse(new Error("Content-Type must be application/json."), {
+        tool: "humanizer",
+        requestId,
+        status: 415,
+        overrideCode: "UNSUPPORTED_MEDIA_TYPE",
+      });
     }
 
     // 2. Parse JSON Body
@@ -41,16 +41,12 @@ async function handlePOST(req: NextRequest) {
     try {
       body = await req.json();
     } catch {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "INVALID_JSON",
-            message: "Request body contains invalid or malformed JSON.",
-          },
-        },
-        { status: 400 },
-      );
+      return createNormalizedErrorResponse(new Error("Request body contains invalid or malformed JSON."), {
+        tool: "humanizer",
+        requestId,
+        status: 400,
+        overrideCode: "INVALID_JSON",
+      });
     }
 
     // The verified server session controls the input limit.
@@ -69,16 +65,13 @@ async function handlePOST(req: NextRequest) {
         issue?.code === "too_big" ||
         message.includes(maxInputLength.toLocaleString());
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: isLengthError ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR",
-            message,
-          },
-        },
-        { status: isLengthError ? 413 : 400 },
-      );
+      return createNormalizedErrorResponse(new Error(message), {
+        tool: "humanizer",
+        requestId,
+        status: isLengthError ? 413 : 400,
+        overrideCode: isLengthError ? "PAYLOAD_TOO_LARGE" : "VALIDATION_ERROR",
+        overrideMessage: message,
+      });
     }
 
     const rateLimit = await checkRateLimit(
@@ -88,17 +81,13 @@ async function handlePOST(req: NextRequest) {
 
     // In production, fail closed with 503 if strict rate limiting cannot be enforced
     if (rateLimit.serviceUnavailable) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "SERVICE_UNAVAILABLE",
-            message:
-              "Rate limiting service is temporarily unavailable. Request blocked for system protection.",
-          },
-        },
-        { status: 503 },
-      );
+      return createNormalizedErrorResponse(new Error("Rate limiting service unavailable."), {
+        tool: "humanizer",
+        requestId,
+        status: 503,
+        overrideCode: "SERVICE_UNAVAILABLE",
+        overrideMessage: "Rate limiting service is temporarily unavailable. Please try again shortly.",
+      });
     }
 
     if (!rateLimit.success) {
@@ -107,24 +96,14 @@ async function handlePOST(req: NextRequest) {
         Math.ceil((rateLimit.reset - Date.now()) / 1000),
       );
 
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "RATE_LIMIT_EXCEEDED",
-            message: `Too many requests. Please try again in ${retryAfterSec} seconds.`,
-          },
-        },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(retryAfterSec),
-            "X-RateLimit-Limit": String(rateLimit.limit),
-            "X-RateLimit-Remaining": String(rateLimit.remaining),
-            "X-RateLimit-Reset": String(rateLimit.reset),
-          },
-        },
-      );
+      return createNormalizedErrorResponse(new Error("Rate limit exceeded."), {
+        tool: "humanizer",
+        requestId,
+        status: 429,
+        overrideCode: "APP_RATE_LIMIT_EXCEEDED",
+        overrideMessage: `Too many requests. Please try again in ${retryAfterSec} seconds.`,
+        retryAfter: retryAfterSec,
+      });
     }
 
     jobId = await startAiJob({
@@ -182,6 +161,7 @@ async function handlePOST(req: NextRequest) {
       {
         status: 200,
         headers: {
+          "X-Request-Id": requestId,
           "X-RateLimit-Limit": String(rateLimit.limit),
           "X-RateLimit-Remaining": String(rateLimit.remaining),
         },
@@ -189,50 +169,11 @@ async function handlePOST(req: NextRequest) {
     );
   } catch (error: unknown) {
     if (jobId) await failAiJob(jobId, error);
-    // 8. Error Mapping
-    if (error instanceof HumanizerError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: error.code,
-            message: error.message,
-          },
-        },
-        { status: error.status },
-      );
-    }
-
-    // Check for DeepSeek / network timeout error
-    const errMessage = error instanceof Error ? error.message : String(error);
-    if (errMessage.toLowerCase().includes("timeout")) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "AI_TIMEOUT",
-            message:
-              "The AI request timed out. Please try again with shorter text.",
-          },
-        },
-        { status: 504 },
-      );
-    }
-
-    // Log unexpected errors safely on the server without leaking sensitive text
-    console.error("Unhandled error in /api/humanize:", errMessage);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: "INTERNAL_SERVER_ERROR",
-          message:
-            "An unexpected error occurred while processing your request.",
-        },
-      },
-      { status: 500 },
-    );
+    return createNormalizedErrorResponse(error, {
+      tool: "humanizer",
+      requestId,
+      status: error instanceof HumanizerError ? error.status : undefined,
+    });
   }
 }
 

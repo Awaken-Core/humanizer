@@ -1,4 +1,6 @@
-import "server-only";
+if (typeof window !== "undefined") {
+  throw new Error("This module can only be used on the server.");
+}
 
 import { getDeepSeekClient, DEEPSEEK_CONFIG } from "@/lib/ai/deepseek.client";
 import {
@@ -78,7 +80,7 @@ export async function checkGrammar(
   const deterministicIssues = runDeterministicGrammarChecks(text);
 
   try {
-    const client = getDeepSeekClient();
+    const client = getDeepSeekClient({ timeoutMs: 20_000, maxRetries: 1 });
     const model = DEEPSEEK_CONFIG.defaultModel;
 
     const response = await client.chat.completions.create({

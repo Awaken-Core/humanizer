@@ -46,7 +46,7 @@ async function generateParaphrase(
   tone: ParaphraserToneType,
   focus: ParaphraserFocusType,
 ): Promise<ParaphraseGenerationResult> {
-  const client = getDeepSeekClient();
+  const client = getDeepSeekClient({ timeoutMs: 25_000, maxRetries: 1 });
   const model = DEEPSEEK_CONFIG.defaultModel;
 
   try {
@@ -70,7 +70,7 @@ async function generateParaphrase(
     const paraphrasedText = response.choices[0]?.message?.content?.trim();
     if (!paraphrasedText) {
       throw new HumanizerError(
-        "DeepSeek returned an empty paraphrase.",
+        "Paraphrasing engine returned an empty result.",
         "PARAPHRASING_FAILED",
         502,
       );
@@ -86,10 +86,10 @@ async function generateParaphrase(
     if (error instanceof HumanizerError) throw error;
 
     const message =
-      error instanceof Error ? error.message : "Unknown paraphrasing error";
+      error instanceof Error ? error.message : "Error during paraphrasing";
     const status = (error as { status?: number })?.status ?? 502;
     throw new ProviderApiError(
-      `DeepSeek paraphrasing request failed: ${message}`,
+      `Paraphrasing request failed: ${message}`,
       status,
       error,
     );

@@ -1,69 +1,31 @@
 import type { MetadataRoute } from "next";
-import { env } from "@/lib/env";
+import { getBaseUrl } from "@/lib/seo-utils";
+
+// Stable content release timestamp to avoid spurious sitemap changes on every invocation
+const STABLE_CONTENT_RELEASE_DATE = new Date("2026-11-08T00:00:00.000Z");
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = env.NEXT_PUBLIC_APP_BASE_URL.endsWith("/")
-    ? env.NEXT_PUBLIC_APP_BASE_URL.slice(0, -1)
-    : env.NEXT_PUBLIC_APP_BASE_URL;
-  const now = new Date();
+  const baseUrl = getBaseUrl();
 
-  const routes = [
-    {
-      url: `${baseUrl}`,
-      lastModified: now,
-      changeFrequency: "daily" as const,
-      priority: 1.0,
-    },
-    {
-      url: `${baseUrl}/workspace`,
-      lastModified: now,
-      changeFrequency: "daily" as const,
-      priority: 0.95,
-    },
-    {
-      url: `${baseUrl}/how-it-works`,
-      lastModified: now,
-      changeFrequency: "weekly" as const,
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/faq`,
-      lastModified: now,
-      changeFrequency: "weekly" as const,
-      priority: 0.85,
-    },
-    {
-      url: `${baseUrl}/about`,
-      lastModified: now,
-      changeFrequency: "monthly" as const,
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/compare/quillbot-alternative`,
-      lastModified: now,
-      changeFrequency: "weekly" as const,
-      priority: 0.85,
-    },
-    {
-      url: `${baseUrl}/compare/stealthgpt-alternative`,
-      lastModified: now,
-      changeFrequency: "weekly" as const,
-      priority: 0.85,
-    },
-    {
-      url: `${baseUrl}/privacy`,
-      lastModified: now,
-      changeFrequency: "monthly" as const,
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/terms`,
-      lastModified: now,
-      changeFrequency: "monthly" as const,
-      priority: 0.5,
-    },
+  const publicPaths = [
+    "",
+    "/ai-humanizer",
+    "/ai-detector",
+    "/paraphraser",
+    "/summarizer",
+    "/plagiarism-checker",
+    "/grammar-checker",
+    "/how-it-works",
+    "/faq",
+    "/about",
+    "/compare/quillbot-alternative",
+    "/compare/stealthgpt-alternative",
+    "/privacy",
+    "/terms",
   ];
 
-  return routes;
+  return publicPaths.map((path) => ({
+    url: `${baseUrl}${path}`,
+    lastModified: STABLE_CONTENT_RELEASE_DATE,
+  }));
 }
-

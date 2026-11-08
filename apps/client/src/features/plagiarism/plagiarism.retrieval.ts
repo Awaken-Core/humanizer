@@ -1,4 +1,6 @@
-import "server-only";
+if (typeof window !== "undefined") {
+  throw new Error("This module can only be used on the server.");
+}
 
 import { env } from "@/lib/env";
 import type { PlagiarismSource } from "./plagiarism.types";
