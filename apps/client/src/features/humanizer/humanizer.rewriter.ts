@@ -51,7 +51,7 @@ export async function rewriteText(
   options: RewriteTextOptions
 ): Promise<RewriteResult> {
   const { text, analysis, mode, intensity } = options;
-  const client = getDeepSeekClient();
+  const client = getDeepSeekClient({ timeoutMs: 30_000, maxRetries: 1 });
   const model = DEEPSEEK_CONFIG.defaultModel;
 
   const systemPrompt = buildRewriterSystemPrompt(mode, intensity);
@@ -79,7 +79,7 @@ export async function rewriteText(
 
     if (!content) {
       throw new RewritingFailedError(
-        "DeepSeek returned an empty response during the text rewriting phase."
+        "Rewriting engine returned an empty response."
       );
     }
 
@@ -95,8 +95,8 @@ export async function rewriteText(
     }
 
     const message =
-      error instanceof Error ? error.message : "Unknown error during DeepSeek rewriting";
+      error instanceof Error ? error.message : "Error during text rewriting";
     const status = (error as { status?: number })?.status ?? 502;
-    throw new ProviderApiError(`DeepSeek rewriting request failed: ${message}`, status, error);
+    throw new ProviderApiError(`Text rewriting failed: ${message}`, status, error);
   }
 }

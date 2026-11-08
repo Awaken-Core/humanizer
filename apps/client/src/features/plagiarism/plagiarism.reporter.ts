@@ -1,4 +1,6 @@
-import "server-only";
+if (typeof window !== "undefined") {
+  throw new Error("This module can only be used on the server.");
+}
 
 import { getDeepSeekClient, DEEPSEEK_CONFIG } from "@/lib/ai/deepseek.client";
 import type { PlagiarismScores, PlagiarismSource } from "./plagiarism.types";
@@ -89,7 +91,7 @@ export async function generatePlagiarismSummary(
   wordCount: number
 ): Promise<string> {
   try {
-    const client = getDeepSeekClient();
+    const client = getDeepSeekClient({ timeoutMs: 25_000, maxRetries: 1 });
     const model = DEEPSEEK_CONFIG.defaultModel;
     const userPrompt = buildReporterUserPrompt(scores, sources, wordCount);
 

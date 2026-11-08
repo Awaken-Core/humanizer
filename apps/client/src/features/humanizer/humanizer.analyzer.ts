@@ -41,7 +41,7 @@ export async function analyzeText(text: string): Promise<{
   promptTokens?: number;
   completionTokens?: number;
 }> {
-  const client = getDeepSeekClient();
+  const client = getDeepSeekClient({ timeoutMs: 30_000, maxRetries: 1 });
   const model = DEEPSEEK_CONFIG.defaultModel;
 
   try {
@@ -66,14 +66,14 @@ export async function analyzeText(text: string): Promise<{
     const content = response.choices?.[0]?.message?.content?.trim();
 
     if (!content) {
-      throw new ProviderApiError("DeepSeek API returned an empty response during text analysis.");
+      throw new ProviderApiError("Analysis engine returned an empty response.");
     }
 
     const parsedJson = cleanAndParseJson(content);
     const validated = WritingAnalysisSchema.safeParse(parsedJson);
 
     if (!validated.success) {
-      throw new AnalysisParseError("Analysis JSON structure failed validation.", {
+      throw new AnalysisParseError("Analysis structure failed validation.", {
         issues: validated.error.issues,
         rawJson: parsedJson,
       });
@@ -89,9 +89,9 @@ export async function analyzeText(text: string): Promise<{
       throw error;
     }
 
-    const message = error instanceof Error ? error.message : "Unknown error during DeepSeek analysis";
+    const message = error instanceof Error ? error.message : "Error during text analysis";
     const status = (error as { status?: number })?.status ?? 502;
-    throw new ProviderApiError(`DeepSeek analysis request failed: ${message}`, status, error);
+    throw new ProviderApiError(`Text analysis failed: ${message}`, status, error);
   }
 }
 

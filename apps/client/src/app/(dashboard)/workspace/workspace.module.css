@@ -175,51 +175,78 @@
   padding: 8px 10px;
 }
 
-.serviceNav button {
+.serviceNavItem,
+.serviceNav button,
+.serviceNav a {
   position: relative;
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important;
   width: 100%;
   min-height: 46px;
-  align-items: center;
+  align-items: center !important;
   gap: 14px;
-  overflow: hidden;
+  overflow: hidden !important;
   padding: 0 14px;
   border: 1px solid transparent;
   border-radius: 11px;
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  white-space: nowrap;
+  white-space: nowrap !important;
+  text-decoration: none;
   transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
 }
 
-.serviceNav button svg {
+.serviceNavItem svg,
+.serviceNav button svg,
+.serviceNav a svg {
   min-width: 18px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
-.serviceNav button span {
+.serviceNavLabel,
+.serviceNav button span,
+.serviceNav a span {
   opacity: 0;
+  max-width: 0;
+  display: inline-block;
   font-size: 13px;
   font-weight: 550;
-  transition: opacity 130ms ease 30ms;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 140ms ease, max-width 200ms ease, visibility 140ms ease;
 }
 
-.serviceRail:hover .serviceNav button span {
+.serviceRail:hover .serviceNavLabel,
+.serviceRail:hover .serviceNav button span,
+.serviceRail:hover .serviceNav a span {
   opacity: 1;
+  max-width: 160px;
+  visibility: visible;
+  pointer-events: auto;
 }
 
-.serviceNav button:hover {
+.serviceNavItem:hover,
+.serviceNav button:hover,
+.serviceNav a:hover {
   border-color: var(--line);
   background: var(--surface-alt);
   color: var(--ink);
 }
 
+.serviceNavItem.activeService,
 .serviceNav .activeService {
   border-color: var(--line);
   background: var(--surface-alt);
   color: var(--ink);
 }
 
+:global(.dark) .serviceNavItem.activeService,
 :global(.dark) .serviceNav .activeService {
   border-color: #343434;
   background: #202020;
@@ -290,9 +317,10 @@
   min-width: 0;
   height: 100%;
   flex-direction: column;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   margin-left: 68px;
-  padding: 30px clamp(24px, 4vw, 64px) 38px;
+  padding: 30px clamp(24px, 4vw, 64px) 48px;
 }
 
 .editorIntro,
@@ -300,6 +328,7 @@
 .editorGrid,
 .noticePanel {
   max-width: 1440px;
+  width: 100%;
   margin-right: auto;
   margin-left: auto;
 }
@@ -368,7 +397,7 @@
 }
 
 .editorPanel {
-  min-height: 590px;
+  min-height: 520px;
   border-color: var(--line) !important;
   background: var(--surface) !important;
   box-shadow: 0 12px 32px #00000009;
@@ -387,7 +416,7 @@
 
 @media (min-width: 1024px) {
   .editorGrid {
-    grid-template-rows: minmax(590px, 1fr);
+    grid-template-rows: minmax(520px, 1fr);
   }
 }
 
@@ -441,13 +470,17 @@
     padding: 8px 10px;
   }
 
-  .serviceNav button {
+  .serviceNavItem,
+  .serviceNav button,
+  .serviceNav a {
     width: 46px;
     min-width: 46px;
     padding: 0 13px;
   }
 
-  .serviceNav button span {
+  .serviceNavLabel,
+  .serviceNav button span,
+  .serviceNav a span {
     display: none;
   }
 
@@ -495,4 +528,243 @@
   .editorPanel {
     min-height: 480px;
   }
+}
+
+/* SEO Section Below Editor */
+.seoSection {
+  max-width: 1440px;
+  width: 100%;
+  margin: 64px auto 32px;
+  padding-top: 48px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+}
+
+.seoHeader {
+  text-align: center;
+  max-width: 820px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.seoBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--blue) 10%, transparent);
+  color: var(--blue);
+  border: 1px solid color-mix(in srgb, var(--blue) 25%, transparent);
+}
+
+.seoH2 {
+  font-size: clamp(24px, 2.6vw, 34px);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.8px;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.seoSubtitle {
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.seoBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.seoBlockTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.5px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stepsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+.stepCard {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  transition: border-color 160ms ease;
+}
+
+.stepNumber {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+  color: var(--blue);
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.stepDescription {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.featuresGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.featureCard {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color 160ms ease;
+}
+
+.featureTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.featureDescription {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.faqList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.faqItem {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 160ms ease;
+}
+
+.faqSummary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--ink);
+  user-select: none;
+  list-style: none;
+}
+
+.faqSummary::-webkit-details-marker {
+  display: none;
+}
+
+.faqSummary svg {
+  transition: transform 200ms ease;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.faqItem[open] .faqSummary svg {
+  transform: rotate(180deg);
+  color: var(--blue);
+}
+
+.faqAnswer {
+  padding: 0 20px 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 0;
+}
+
+.crossToolsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.crossToolCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface-alt);
+  text-decoration: none;
+  color: var(--ink);
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.crossToolCard:hover {
+  border-color: color-mix(in srgb, var(--blue) 50%, var(--line));
+  background: var(--surface);
+  transform: translateY(-1px);
+}
+
+.crossToolName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.crossToolDesc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 0;
 }

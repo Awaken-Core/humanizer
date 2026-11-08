@@ -1,4 +1,6 @@
-import "server-only";
+if (typeof window !== "undefined") {
+  throw new Error("This module can only be executed on the server.");
+}
 
 import { createHash } from "node:crypto";
 import type { NextRequest } from "next/server";

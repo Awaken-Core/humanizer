@@ -1,4 +1,6 @@
-import "server-only";
+if (typeof window !== "undefined") {
+  throw new Error("This module can only be used on the server.");
+}
 
 /**
  * AI Detector — 100% decision-based scoring engine.
