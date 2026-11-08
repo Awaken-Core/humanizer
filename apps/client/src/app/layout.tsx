@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import Script from "next/script";
 import { GoogleAnalytics } from "@next/third-parties/google";
 
 import Providers from "@/components/provider";
@@ -116,10 +117,22 @@ export default function RootLayout({
     <html
       lang="en"
       className={cn(geistSans.variable, "font-sans")}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <head>
         <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
+      <body
+        className="bg-background font-sans text-foreground antialiased"
+        suppressHydrationWarning
+      >
+        <Script
+          id="bis-skin-cleanup"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
@@ -145,15 +158,6 @@ export default function RootLayout({
             `,
           }}
         />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-      </head>
-      <body
-        className="bg-background font-sans text-foreground antialiased"
-        suppressHydrationWarning
-      >
         <Providers>{children}</Providers>
         {env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
           <GoogleAnalytics gaId={env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />

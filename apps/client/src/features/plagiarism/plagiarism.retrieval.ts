@@ -53,60 +53,61 @@ const STOPWORDS = new Set([
 // ---------------------------------------------------------------------------
 
 /**
- * Selects 3–5 high-information-density phrases from the text using a
- * TF-IDF-style heuristic. Picks non-stopword 4–6 word n-grams that are
- * unlikely to be generic filler, then deduplicates.
+ * Selects 3–5 high-information-density phrases from the text.
+ * Uses exact quoted phrases ("...") so that search engines (Serper/Google)
+ * locate the verbatim source rather than broad topical matches.
  *
  * @param text - The user-submitted text.
  * @param maxQueries - Maximum number of search queries to return (default 4).
  * @returns Array of search query strings.
  */
 export function buildSearchQueries(text: string, maxQueries = 4): string[] {
-  // Tokenize into words, strip punctuation
+  // Tokenize into natural words preserving exact sequence (DO NOT strip short words like "a", "to", "in")
   const words = text
     .replace(/[^\w\s]/g, " ")
     .toLowerCase()
     .split(/\s+/)
-    .filter((w) => w.length > 2);
+    .filter((w) => w.length > 0);
 
-  if (words.length < 4) {
-    return [text.slice(0, 120).trim()];
+  if (words.length < 5) {
+    return [text.slice(0, 100).trim()];
   }
 
   // Score each word by content value: non-stopword, length > 4 = higher weight
   const wordScores = words.map((w) => ({
     word: w,
-    score: STOPWORDS.has(w) ? 0 : w.length > 5 ? 2 : 1,
+    score: STOPWORDS.has(w) ? 0 : w.length > 4 ? 2 : 1,
   }));
 
-  // Build 5-word n-gram candidates and score by sum of word scores
+  // Build 7-8 word n-gram candidates for exact quoted search
   type Candidate = { phrase: string; score: number; startIdx: number };
   const candidates: Candidate[] = [];
 
-  const NGRAM_SIZE = 5;
+  const NGRAM_SIZE = Math.min(8, words.length);
   for (let i = 0; i <= wordScores.length - NGRAM_SIZE; i++) {
     const slice = wordScores.slice(i, i + NGRAM_SIZE);
-    const stopwordCount = slice.filter((ws) => ws.score === 0).length;
-    if (stopwordCount >= 3) continue; // Mostly stopwords — skip
+    const contentWords = slice.filter((ws) => ws.score > 0).length;
+    // We want at least 3 content words so it is meaningful
+    if (contentWords < 3) continue;
 
     const score = slice.reduce((sum, ws) => sum + ws.score, 0);
     candidates.push({
-      phrase: slice.map((ws) => ws.word).join(" "),
+      phrase: `"${slice.map((ws) => ws.word).join(" ")}"`,
       score,
       startIdx: i,
     });
   }
 
   if (candidates.length === 0) {
-    return [words.slice(0, 6).join(" ")];
+    return [`"${words.slice(0, NGRAM_SIZE).join(" ")}"`];
   }
 
   // Sort by score descending
   candidates.sort((a, b) => b.score - a.score);
 
-  // Greedily select queries that are at least 10 words apart (index-wise)
+  // Greedily select queries that are at least 15 words apart
   const selected: Candidate[] = [];
-  const MIN_GAP = 10;
+  const MIN_GAP = 15;
   for (const candidate of candidates) {
     if (selected.length >= maxQueries) break;
     const tooClose = selected.some(
@@ -215,8 +216,9 @@ export async function fetchPageText(url: string): Promise<string> {
     const response = await fetch(url, {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (compatible; PlagiarismBot/1.0; +https://example.com/bot)",
-        Accept: "text/html,application/xhtml+xml",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
       },
       signal: AbortSignal.timeout(10_000),
     });
@@ -233,7 +235,28 @@ export async function fetchPageText(url: string): Promise<string> {
 
     const html = await response.text();
 
-    // Strip scripts and style blocks first
+    // 1. Extract embedded Next.js __NEXT_DATA__ content if present (e.g. GeeksforGeeks, Substack)
+    let nextDataText = "";
+    const nextDataMatch = /<script\b[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i.exec(html);
+    if (nextDataMatch && nextDataMatch[1]) {
+      try {
+        const nextData = JSON.parse(nextDataMatch[1]);
+        const postContent =
+          nextData?.props?.pageProps?.postDataFromWriteApi?.post_content ||
+          nextData?.props?.pageProps?.post?.content ||
+          nextData?.props?.pageProps?.article?.content ||
+          "";
+        if (typeof postContent === "string" && postContent) {
+          nextDataText = postContent
+            .replace(HTML_TAG_REGEX, " ")
+            .replace(HTML_ENTITY_REGEX, (entity) => HTML_ENTITIES[entity] ?? " ")
+            .replace(/\s+/g, " ")
+            .trim();
+        }
+      } catch {}
+    }
+
+    // Strip scripts and style blocks
     const stripped = html
       .replace(SCRIPT_REGEX, " ")
       .replace(STYLE_REGEX, " ")
@@ -242,7 +265,8 @@ export async function fetchPageText(url: string): Promise<string> {
       .replace(/\s+/g, " ")
       .trim();
 
-    return stripped.slice(0, MAX_PAGE_TEXT_LENGTH);
+    const combined = (nextDataText ? `${nextDataText} ${stripped}` : stripped).slice(0, MAX_PAGE_TEXT_LENGTH);
+    return combined;
   } catch {
     return "";
   }
@@ -293,7 +317,14 @@ export async function retrieveCandidateSources(
   // Fetch all pages concurrently
   const sources = await Promise.all(
     candidates.map(async (result): Promise<PlagiarismSource> => {
-      const rawText = await fetchPageText(result.url);
+      let rawText = await fetchPageText(result.url);
+
+      // Resilient fallback: If scraping was blocked by Cloudflare/WAF or authwall (e.g., Medium, LinkedIn, Facebook),
+      // we utilize the exact indexed snippet returned by Google/Serper so we can still score the matched passage!
+      if (!rawText || rawText.length < 50) {
+        rawText = result.snippet ? `${result.title} ${result.snippet}` : "";
+      }
+
       const domain = extractDomain(result.url);
       return {
         url: result.url,
@@ -308,8 +339,8 @@ export async function retrieveCandidateSources(
     }),
   );
 
-  // Filter out sources where we could not retrieve any text
-  return sources.filter((s) => (s.rawText?.length ?? 0) > 50);
+  // Filter out sources where we have neither scraped text nor snippet
+  return sources.filter((s) => (s.rawText?.length ?? 0) > 15);
 }
 
 // ---------------------------------------------------------------------------

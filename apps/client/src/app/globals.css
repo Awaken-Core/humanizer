@@ -121,7 +121,8 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-html, body {
+html[data-scroll-behavior="smooth"],
+body {
   scroll-behavior: smooth;
 }
 

@@ -68,7 +68,7 @@ import {
   type CitationStyle,
   type AcademicDiscipline,
 } from "@/features/humanizer/citation-shield";
-import Image from "next/image";
+import { Starburst } from "@/components/landing/site-header";
 import styles from "./workspace.module.css";
 
 type ModeType = WorkspaceMode;
@@ -531,13 +531,7 @@ export default function HumanizerPage() {
 
       <header className={styles.topbar}>
         <Link href="/" className={styles.brand} aria-label="Humanizer home">
-          <Image
-            alt=""
-            src="/image/logo.svg"
-            height={28}
-            width={28}
-            className={styles.brandLogo}
-          />
+          <Starburst size={28} />
           <span>
             humanizer<span className={styles.brandDot}>.</span>
           </span>

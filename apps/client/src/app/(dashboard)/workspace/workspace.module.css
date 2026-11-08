@@ -48,6 +48,8 @@
 }
 
 .brandLogo {
+  width: 28px;
+  height: 28px;
   border-radius: 8px;
   filter: brightness(0);
   transition: filter 160ms ease;

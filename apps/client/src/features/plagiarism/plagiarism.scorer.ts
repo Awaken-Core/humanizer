@@ -10,7 +10,11 @@ import {
   filterMatchesByExclusions,
   isCharExcluded,
 } from "./plagiarism.exclusion";
-import { findExactMatchSpans, fingerprintSimilarity } from "./plagiarism.fingerprint";
+import {
+  findExactMatchSpans,
+  fingerprintContainment,
+  fingerprintSimilarity,
+} from "./plagiarism.fingerprint";
 
 // ---------------------------------------------------------------------------
 // TF-IDF & Cosine Similarity
@@ -152,11 +156,15 @@ export async function scoreAllSources(
       continue;
     }
 
-    // --- Stage 1: Fingerprint gating ---
-    const jaccard = fingerprintSimilarity(userText, rawText);
-    if (jaccard < MIN_FINGERPRINT_THRESHOLD) {
-      scoredSources.push({ ...source, matchPercentage: 0, matchedWordCount: 0 });
-      continue;
+    // --- Stage 1: Asymmetric containment gating ---
+    // If rawText is long, prune only if there is genuinely 0 containment and 0 jaccard
+    if (rawText.length >= 300) {
+      const containment = fingerprintContainment(userText, rawText);
+      const jaccard = fingerprintSimilarity(userText, rawText);
+      if (containment === 0 && jaccard < 0.005) {
+        scoredSources.push({ ...source, matchPercentage: 0, matchedWordCount: 0 });
+        continue;
+      }
     }
 
     // --- Stage 2: Exact match spans via LCS ---
@@ -258,7 +266,28 @@ export async function scoreAllSources(
   // Sort sources by match percentage descending
   scoredSources.sort((a, b) => b.matchPercentage - a.matchPercentage);
 
-  return { sources: scoredSources, matches: filteredMatches, scores };
+  // Retain only sources with actual detected overlap so UI is never cluttered with 0% 0-word false positives
+  const nonZeroSources = scoredSources.filter((s) => s.matchedWordCount > 0);
+
+  if (nonZeroSources.length > 0) {
+    const sourceIndexMap = new Map<number, number>();
+    nonZeroSources.forEach((source, newIdx) => {
+      const oldIdx = sources.findIndex((s) => s.url === source.url);
+      if (oldIdx !== -1) sourceIndexMap.set(oldIdx, newIdx);
+    });
+
+    const remappedMatches = filteredMatches
+      .filter((m) => sourceIndexMap.has(m.sourceIndex))
+      .map((m) => ({
+        ...m,
+        sourceIndex: sourceIndexMap.get(m.sourceIndex)!,
+      }));
+
+    return { sources: nonZeroSources, matches: remappedMatches, scores };
+  }
+
+  // If no source had matches, return empty sources and empty matches
+  return { sources: [], matches: [], scores };
 }
 
 // ---------------------------------------------------------------------------

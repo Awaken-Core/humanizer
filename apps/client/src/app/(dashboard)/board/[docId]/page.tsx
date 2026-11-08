@@ -1,7 +1,7 @@
 "use client";
 
 import type { JSONContent } from "@tiptap/core";
-import Image from "next/image";
+import { Starburst } from "@/components/landing/site-header";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -226,13 +226,7 @@ export default function DocumentPage() {
             className={styles.brandMark}
             aria-label="Humanizer home"
           >
-            <Image
-              alt=""
-              src="/image/logo.svg"
-              height={25}
-              width={25}
-              className={workspaceStyles.brandLogo}
-            />
+            <Starburst size={25} />
           </Link>
           <span className={styles.divider} />
           <FileText size={17} className={styles.documentIcon} />
