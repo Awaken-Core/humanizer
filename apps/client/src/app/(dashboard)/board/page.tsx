@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import { Starburst } from "@/components/landing/site-header";
 import { useEffect, useMemo, useState } from "react";
 import {
   Archive,
@@ -132,13 +132,7 @@ export default function BoardPage() {
           className={workspaceStyles.brand}
           aria-label="Humanizer home"
         >
-          <Image
-            alt=""
-            src="/image/logo.svg"
-            height={28}
-            width={28}
-            className={workspaceStyles.brandLogo}
-          />
+          <Starburst size={28} />
           <span>
             humanizer<span className={workspaceStyles.brandDot}>.</span>
           </span>

@@ -179,6 +179,28 @@ export function fingerprintSimilarity(textA: string, textB: string): number {
   return jaccardSimilarity(fpA, fpB);
 }
 
+/**
+ * Computes containment of text A (user submission) inside text B (candidate web page):
+ * |A ∩ B| / |A|
+ * Standard metric in plagiarism detection: measures what portion of the user's
+ * document appears within a potentially much larger reference webpage.
+ *
+ * @param userText - User submitted text (document A).
+ * @param sourceText - Web source text (document B).
+ * @returns Containment ratio in [0, 1].
+ */
+export function fingerprintContainment(userText: string, sourceText: string): number {
+  const fpA = winnow(userText);
+  const fpB = winnow(sourceText);
+  if (fpA.size === 0) return 0;
+
+  let intersection = 0;
+  for (const hash of fpA) {
+    if (fpB.has(hash)) intersection++;
+  }
+  return intersection / fpA.size;
+}
+
 // ---------------------------------------------------------------------------
 // Exact Match Span Detection
 // ---------------------------------------------------------------------------
@@ -221,7 +243,7 @@ export function findExactMatchSpans(
   // For large inputs, use a greedy sliding-window approach to avoid O(m*n) memory
   const MAX_LCS_CELLS = 500_000;
   if (m * n > MAX_LCS_CELLS) {
-    return findMatchesGreedy(userText, userNorm, userWords, srcNorm, srcWords, minWords);
+    return findMatchesGreedy(userText, sourceText, userNorm, userWords, srcNorm, srcWords, minWords);
   }
 
   // Standard DP LCS
@@ -347,6 +369,7 @@ function runsToSpans(
  */
 function findMatchesGreedy(
   userText: string,
+  sourceText: string,
   userNorm: string[],
   userWords: TokenWithOffset[],
   srcNorm: string[],
@@ -389,14 +412,7 @@ function findMatchesGreedy(
         startChar,
         endChar,
         matchText: userText.slice(startChar, endChar),
-        sourceText: srcWords[srcIdx]
-          ? (() => {
-              const raw = srcWords[srcIdx + len - 1];
-              return raw
-                ? userText.slice(srcStartChar, srcEndChar)
-                : "";
-            })()
-          : "",
+        sourceText: sourceText.slice(srcStartChar, srcEndChar),
       });
 
       i += len; // Skip past the matched run
