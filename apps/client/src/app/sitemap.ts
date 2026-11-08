@@ -7,8 +7,8 @@ const STABLE_CONTENT_RELEASE_DATE = new Date("2026-11-08T00:00:00.000Z");
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = getBaseUrl();
 
+  // Includes only canonical URLs that serve content directly (no redirects)
   const publicPaths = [
-    "",
     "/ai-humanizer",
     "/ai-detector",
     "/paraphraser",

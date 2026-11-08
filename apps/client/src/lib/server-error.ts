@@ -79,23 +79,45 @@ export function sanitizeLogData(input: unknown): unknown {
 /**
  * Classifies an unknown error into a secure, user-friendly public error response.
  * Never exposes upstream vendor names (DeepSeek), stack traces, or internal paths.
+ * Accurately aligns status codes with retryable classification.
  */
 export function classifyError(error: unknown, statusHint?: number): ErrorClassification {
   const errString = error instanceof Error ? error.message : String(error);
   const lower = errString.toLowerCase();
   const rawStatus = (error as { status?: number })?.status ?? statusHint;
 
-  // 1. Upstream Provider Authentication / Key / Billing failure (check first)
-  if (rawStatus === 401 || rawStatus === 403 || lower.includes("api key") || lower.includes("unauthorized") || lower.includes("authentication")) {
+  // 1. Content-Type / Unsupported Media Type (HTTP 415) - Non-retryable
+  if (
+    rawStatus === 415 ||
+    lower.includes("unsupported_media_type") ||
+    lower.includes("content-type must be") ||
+    lower.includes("unsupported media")
+  ) {
     return {
-      code: "AI_SERVICE_UNAVAILABLE",
-      message: "Our AI writing service is temporarily unavailable. Please try again shortly.",
-      status: 503,
+      code: "UNSUPPORTED_MEDIA_TYPE",
+      message: "Content-Type must be application/json.",
+      status: 415,
       retryable: false,
     };
   }
 
-  // 2. User/Client App Rate Limit (429 from ratelimit.ts)
+  // 2. Upstream Provider Authentication / Key / Billing failure (HTTP 401 / 403 / 503) - Non-retryable from client
+  if (
+    rawStatus === 401 ||
+    rawStatus === 403 ||
+    lower.includes("api key") ||
+    lower.includes("unauthorized") ||
+    lower.includes("authentication")
+  ) {
+    return {
+      code: "AI_SERVICE_UNAVAILABLE",
+      message: "Our AI writing service is temporarily unavailable. Please try again shortly.",
+      status: rawStatus === 401 || rawStatus === 403 ? rawStatus : 503,
+      retryable: false,
+    };
+  }
+
+  // 3. User/Client App Rate Limit (HTTP 429) - Retryable
   if (rawStatus === 429 || lower.includes("rate limit exceeded") || lower.includes("too many requests")) {
     return {
       code: "APP_RATE_LIMIT_EXCEEDED",
@@ -105,7 +127,7 @@ export function classifyError(error: unknown, statusHint?: number): ErrorClassif
     };
   }
 
-  // 3. Upstream AI Provider Rate Limit / Capacity Busy
+  // 4. Upstream AI Provider Rate Limit / Capacity Busy (HTTP 503) - Retryable
   if (rawStatus === 503 || lower.includes("quota") || lower.includes("rate_limit")) {
     return {
       code: "AI_UPSTREAM_BUSY",
@@ -116,24 +138,31 @@ export function classifyError(error: unknown, statusHint?: number): ErrorClassif
     };
   }
 
-  // 4. Execution Timeouts (Abort / Fetch Timeout)
+  // 5. Execution Timeouts (HTTP 408 / 504 / Abort / Fetch Timeout) - Retryable
   if (
+    rawStatus === 408 ||
     rawStatus === 504 ||
     lower.includes("timeout") ||
     lower.includes("timed out") ||
     lower.includes("aborterror") ||
     lower.includes("aborted")
   ) {
+    const status = rawStatus === 408 ? 408 : 504;
     return {
       code: "REQUEST_TIMEOUT",
       message: "Processing took longer than expected. Please try again with shorter text.",
-      status: 504,
+      status,
       retryable: true,
     };
   }
 
-  // 5. Payload Too Large (Character limits)
-  if (rawStatus === 413 || lower.includes("payload_too_large") || lower.includes("too_big") || lower.includes("maximum allowed limit")) {
+  // 6. Payload Too Large (Character limits - HTTP 413) - Non-retryable
+  if (
+    rawStatus === 413 ||
+    lower.includes("payload_too_large") ||
+    lower.includes("too_big") ||
+    lower.includes("maximum allowed limit")
+  ) {
     return {
       code: "PAYLOAD_TOO_LARGE",
       message: "The submitted text exceeds the maximum character limit.",
@@ -142,7 +171,7 @@ export function classifyError(error: unknown, statusHint?: number): ErrorClassif
     };
   }
 
-  // 6. Validation Errors
+  // 7. Validation Errors (HTTP 400) - Non-retryable
   if (
     rawStatus === 400 ||
     lower.includes("validation") ||
@@ -152,15 +181,16 @@ export function classifyError(error: unknown, statusHint?: number): ErrorClassif
   ) {
     return {
       code: "VALIDATION_ERROR",
-      message: error instanceof Error && !lower.includes("deepseek") && !lower.includes("server")
-        ? error.message
-        : "Please verify your input text and settings before retrying.",
+      message:
+        error instanceof Error && !lower.includes("deepseek") && !lower.includes("server")
+          ? error.message
+          : "Please verify your input text and settings before retrying.",
       status: 400,
       retryable: false,
     };
   }
 
-  // 7. Upstream Provider 5xx / Bad Gateway
+  // 8. Upstream Provider 5xx / Bad Gateway (HTTP 502) - Retryable
   if (rawStatus === 502 || lower.includes("bad gateway") || lower.includes("upstream")) {
     return {
       code: "AI_SERVICE_DEGRADED",
@@ -170,7 +200,7 @@ export function classifyError(error: unknown, statusHint?: number): ErrorClassif
     };
   }
 
-  // 8. General Internal Server Error
+  // 9. General Internal Server Error (HTTP 500) - Retryable
   return {
     code: "INTERNAL_SERVER_ERROR",
     message: "An unexpected error occurred while processing your request. Please try again.",
@@ -181,6 +211,7 @@ export function classifyError(error: unknown, statusHint?: number): ErrorClassif
 
 /**
  * Creates a normalized, privacy-hardened JSON error response with full UUID requestId.
+ * Preserves rate-limit headers (X-RateLimit-*, Retry-After) when provided.
  */
 export function createNormalizedErrorResponse(
   error: unknown,
@@ -191,6 +222,7 @@ export function createNormalizedErrorResponse(
     overrideCode?: string;
     overrideMessage?: string;
     retryAfter?: number;
+    headers?: Record<string, string>;
     extraLogInfo?: Record<string, unknown>;
   }
 ): NextResponse<StandardApiError> {
@@ -214,6 +246,7 @@ export function createNormalizedErrorResponse(
 
   const responseHeaders: Record<string, string> = {
     "X-Request-Id": requestId,
+    ...(options.headers || {}),
   };
 
   if (retryAfter) {
@@ -237,4 +270,3 @@ export function createNormalizedErrorResponse(
     }
   );
 }
-

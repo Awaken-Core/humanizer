@@ -7,6 +7,8 @@ import {
   useToolStore,
   type ParaphraserFocus,
   type ParaphraserTone,
+  type ToolPreferences,
+  type UploadedFileState,
   type WorkspaceIntensity,
   type WorkspaceMode,
   type WorkspaceServiceRequest,
@@ -71,15 +73,6 @@ interface ServiceSample {
   focus?: FocusType;
   mode?: ModeType;
   intensity?: IntensityType;
-}
-
-interface UploadedFileState {
-  name: string;
-  format: "docx" | "latex" | "markdown" | "txt" | "zip";
-  docxResult?: DocxParseResult;
-  latexPlaceholders?: Map<string, string>;
-  markdownPlaceholders?: Map<string, string>;
-  zipData?: any;
 }
 
 const SERVICE_SAMPLES: Record<ToolId, ServiceSample[]> = {
@@ -170,36 +163,59 @@ export function WorkspaceEditor({ service }: WorkspaceEditorProps) {
   const { data: session } = useSession();
   const inputText = useToolStore((state) => state.inputText);
   const setInputText = useToolStore((state) => state.setInputText);
-  const outputText = useToolStore((state) => state.outputText);
-  const plagiarismResult = useToolStore((state) => state.plagiarismResult);
-  const aiDetectorResult = useToolStore((state) => state.aiDetectorResult);
-  const grammarResult = useToolStore((state) => state.grammarResult);
   const toggleSourceExclusion = useToolStore(
     (state) => state.toggleSourceExclusion,
   );
-  const isLoading = useToolStore((state) => state.isLoading);
-  const error = useToolStore((state) => state.error);
-  const errorDetail = useToolStore((state) => state.errorDetail);
   const runTool = useToolStore((state) => state.runTool);
   const clearResult = useToolStore((state) => state.clearResult);
   const setStoreError = useToolStore((state) => state.setError);
+  const setActiveTool = useToolStore((state) => state.setActiveTool);
 
-  const [mode, setMode] = useState<ModeType>("natural");
-  const [intensity, setIntensity] = useState<IntensityType>("medium");
-  const [tone, setTone] = useState<ToneType>("standard");
-  const [focus, setFocus] = useState<FocusType>("both");
+  // Per-tool isolated results
+  const toolResult = useToolStore((state) => state.toolResults[service]);
+  const outputText = toolResult?.outputText ?? "";
+  const plagiarismResult = toolResult?.plagiarismResult ?? null;
+  const aiDetectorResult = toolResult?.aiDetectorResult ?? null;
+  const grammarResult = toolResult?.grammarResult ?? null;
+  const error = toolResult?.error ?? null;
+  const errorDetail = toolResult?.errorDetail ?? null;
+  const isLoading = Boolean(useToolStore((state) => state.activeToolLoading[service]));
+
+  // Per-tool isolated preferences
+  const toolPreferences = useToolStore((state) => state.toolPreferences[service]) || {};
+  const setToolPreference = useToolStore((state) => state.setToolPreference);
+
+  const mode: ModeType = (toolPreferences.mode as ModeType) ?? "natural";
+  const intensity: IntensityType = (toolPreferences.intensity as IntensityType) ?? "medium";
+  const tone: ToneType = (toolPreferences.tone as ToneType) ?? "standard";
+  const focus: FocusType = (toolPreferences.focus as FocusType) ?? "both";
+  const excludeQuotes = toolPreferences.excludeQuotes ?? true;
+  const excludeBibliography = toolPreferences.excludeBibliography ?? true;
+  const excludeSmallMatches = toolPreferences.excludeSmallMatches ?? true;
+
+  const setMode = (val: ModeType) => setToolPreference(service, "mode", val);
+  const setIntensity = (val: IntensityType) => setToolPreference(service, "intensity", val);
+  const setTone = (val: ToneType) => setToolPreference(service, "tone", val);
+  const setFocus = (val: FocusType) => setToolPreference(service, "focus", val);
+  const setExcludeQuotes = (val: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof val === "function" ? val(excludeQuotes) : val;
+    setToolPreference(service, "excludeQuotes", next);
+  };
+  const setExcludeBibliography = (val: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof val === "function" ? val(excludeBibliography) : val;
+    setToolPreference(service, "excludeBibliography", next);
+  };
+  const setExcludeSmallMatches = (val: boolean | ((prev: boolean) => boolean)) => {
+    const next = typeof val === "function" ? val(excludeSmallMatches) : val;
+    setToolPreference(service, "excludeSmallMatches", next);
+  };
+
   const [copied, setCopied] = useState(false);
 
-  // Plagiarism-specific settings
-  const [excludeQuotes, setExcludeQuotes] = useState(true);
-  const [excludeBibliography, setExcludeBibliography] = useState(true);
-  const [excludeSmallMatches, setExcludeSmallMatches] = useState(true);
-
-  // File Upload & AST State
+  // File Upload & AST State (stored in shared Zustand store so it survives cross-tool navigation)
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadedFile, setUploadedFile] = useState<UploadedFileState | null>(
-    null,
-  );
+  const uploadedFile = useToolStore((state) => state.uploadedDocument);
+  const setUploadedFile = useToolStore((state) => state.setUploadedDocument);
   const [isFileParsing, setIsFileParsing] = useState(false);
 
   // Citation Shield State
@@ -212,12 +228,12 @@ export function WorkspaceEditor({ service }: WorkspaceEditorProps) {
     string | null
   >(null);
 
-  // Clear previous outputs when switching active service
+  // Synchronize active tool on navigation without wiping results
   useEffect(() => {
     setIsCitationShieldOpen(false);
     setShieldSuccessMessage(null);
-    clearResult();
-  }, [service, clearResult]);
+    setActiveTool(service);
+  }, [service, setActiveTool]);
 
   const characterCount = inputText.length;
 

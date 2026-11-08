@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+import type { ToolSeoConfig } from "@/lib/seo-data";
+
 /**
  * Dynamic resolution of the production base URL without hardcoded domains.
  */
@@ -26,3 +29,41 @@ export function getCanonicalUrl(relativePath: string): string {
   return `${base}${normalized}`;
 }
 
+/**
+ * Builds standard Open Graph, Twitter, and canonical metadata for dedicated AI tool routes.
+ * Eliminates repetitive metadata boilerplate across all 6 tool pages.
+ */
+export function buildToolMetadata(config: ToolSeoConfig): Metadata {
+  const canonicalUrl = getCanonicalUrl(config.slug);
+
+  return {
+    title: config.title,
+    description: config.description,
+    keywords: [config.primaryKeyword, ...config.secondaryKeywords],
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-snippet": -1,
+        "max-image-preview": "large",
+      },
+    },
+    openGraph: {
+      title: config.title,
+      description: config.description,
+      url: canonicalUrl,
+      type: "website",
+      siteName: "Humanizer",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: config.title,
+      description: config.description,
+    },
+  };
+}

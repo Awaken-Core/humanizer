@@ -177,19 +177,20 @@
 .serviceNav button,
 .serviceNav a {
   position: relative;
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important;
   width: 100%;
   min-height: 46px;
-  align-items: center;
+  align-items: center !important;
   gap: 14px;
-  overflow: hidden;
+  overflow: hidden !important;
   padding: 0 14px;
   border: 1px solid transparent;
   border-radius: 11px;
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  white-space: nowrap;
+  white-space: nowrap !important;
   text-decoration: none;
   transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
 }
@@ -207,19 +208,24 @@
 .serviceNav button span,
 .serviceNav a span {
   opacity: 0;
+  max-width: 0;
+  display: inline-block;
   font-size: 13px;
   font-weight: 550;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip;
   pointer-events: none;
-  transition: opacity 130ms ease 30ms;
+  visibility: hidden;
+  transition: opacity 140ms ease, max-width 200ms ease, visibility 140ms ease;
 }
 
 .serviceRail:hover .serviceNavLabel,
 .serviceRail:hover .serviceNav button span,
 .serviceRail:hover .serviceNav a span {
   opacity: 1;
+  max-width: 160px;
+  visibility: visible;
   pointer-events: auto;
 }
 

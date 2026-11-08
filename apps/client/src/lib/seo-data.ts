@@ -142,8 +142,8 @@ export const SEO_TOOLS_CONFIG: Record<string, ToolSeoConfig> = {
         description: "Identifies individual sentences that exhibit high predictability or rigid syntactic repetition.",
       },
       {
-        title: "Zero-Storage Privacy",
-        description: "Analysis is processed in memory and never indexed into public training datasets.",
+        title: "Private Analysis & Security",
+        description: "Your text is analyzed in isolated runtime workers and never indexed into public training datasets.",
       },
     ],
     faqs: [
@@ -161,7 +161,7 @@ export const SEO_TOOLS_CONFIG: Record<string, ToolSeoConfig> = {
       },
       {
         question: "Does the AI detector store my text?",
-        answer: "No, the heuristic detection engine evaluates text in real time and does not store or share your submission.",
+        answer: "Submissions are recorded temporarily to manage your session job history and rate limits in accordance with our privacy policy, but your content is never sold, shared with third parties, or used to train public AI models.",
       },
     ],
   },
