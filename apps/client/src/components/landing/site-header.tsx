@@ -81,7 +81,7 @@ export function SiteHeader() {
           </div>
           <Link
             className={`${styles.button} ${styles.smallButton}`}
-            href="/workspace"
+            href="/ai-humanizer"
           >
             Get started <ArrowUpRight size={15} />
           </Link>
@@ -100,7 +100,7 @@ export function SiteHeader() {
         <nav className={styles.mobileNav} aria-label="Mobile navigation">
           {[
             ...navLinks,
-            { label: "Workspace Studio", href: "/workspace" },
+            { label: "Workspace Studio", href: "/ai-humanizer" },
             { label: "QuillBot Alternative", href: "/compare/quillbot-alternative" },
             { label: "Privacy Policy", href: "/privacy" },
             { label: "Terms of Service", href: "/terms" },

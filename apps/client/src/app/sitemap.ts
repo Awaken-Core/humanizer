@@ -9,6 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // Includes only canonical URLs that serve content directly (no redirects)
   const publicPaths = [
+    "",
     "/ai-humanizer",
     "/ai-detector",
     "/paraphraser",

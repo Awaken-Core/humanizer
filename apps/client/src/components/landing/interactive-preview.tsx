@@ -207,7 +207,7 @@ export function InteractivePreview() {
                   draft.
                 </span>
                 <Link
-                  href={active.live ? "/workspace" : "/#services"}
+                  href={active.live ? (active.href || "/ai-humanizer") : "/#services"}
                   className={`${styles.button} ${styles.blueButton}`}
                 >
                   {active.name === "AI Humanizer" ? "Humanize your text" : `Open ${active.name}`}

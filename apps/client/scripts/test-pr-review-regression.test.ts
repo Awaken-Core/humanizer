@@ -212,9 +212,9 @@ describe("Regression Suite: Persistent Workspace, Data Integrity & PR Review Fin
       const items = sitemap();
       const urls = items.map((i) => i.url);
 
-      // Root path (which redirects to /ai-humanizer) must NOT be in the sitemap
+      // Root homepage serves canonical landing content and is in the sitemap
       const hasBareRoot = urls.some((u) => u === "http://localhost:3000" || u === "http://localhost:3000/");
-      expect(hasBareRoot).toBe(false);
+      expect(hasBareRoot).toBe(true);
 
       // Dedicated canonical tool pages MUST be present
       expect(urls.some((u) => u.endsWith("/ai-humanizer"))).toBe(true);

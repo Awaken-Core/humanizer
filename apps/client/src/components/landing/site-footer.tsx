@@ -19,12 +19,12 @@ const footerSections = [
   {
     title: "Writing tools",
     links: [
-      { label: "AI Humanizer", href: "/workspace" },
-      { label: "AI Content Detector", href: "/workspace" },
-      { label: "Summarizer", href: "/workspace" },
-      { label: "Plagiarism Detector", href: "/workspace" },
-      { label: "Grammar & Accuracy", href: "/workspace" },
-      { label: "AI Paraphraser", href: "/workspace" },
+      { label: "AI Humanizer", href: "/ai-humanizer" },
+      { label: "AI Content Detector", href: "/ai-detector" },
+      { label: "Summarizer", href: "/summarizer" },
+      { label: "Plagiarism Detector", href: "/plagiarism-checker" },
+      { label: "Grammar & Accuracy", href: "/grammar-checker" },
+      { label: "AI Paraphraser", href: "/paraphraser" },
     ],
   },
   {
@@ -61,7 +61,7 @@ export function SiteFooter() {
             stronger ideas, and a little more you.
           </p>
           <Link
-            href="/workspace"
+            href="/ai-humanizer"
             className={styles.footerMail}
             aria-label="Open your writing workspace"
           >

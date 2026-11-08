@@ -11,6 +11,7 @@ export const tools = [
   {
     name: "AI Humanizer",
     short: "Humanize",
+    href: "/ai-humanizer",
     icon: Fingerprint,
     description:
       "Turn mechanical drafts into natural writing. Keep your meaning. Find your voice.",
@@ -20,6 +21,7 @@ export const tools = [
   {
     name: "AI Content Detector",
     short: "Detect",
+    href: "/ai-detector",
     icon: ScanText,
     description:
       "Explore signals of AI-generated writing and understand where a draft needs a human touch.",
@@ -29,6 +31,7 @@ export const tools = [
   {
     name: "Summarizer",
     short: "Summarize",
+    href: "/summarizer",
     icon: ListFilter,
     description:
       "Find the essential ideas in a long document, then make every sentence work harder.",
@@ -38,6 +41,7 @@ export const tools = [
   {
     name: "Plagiarism Detector",
     short: "Check originality",
+    href: "/plagiarism-checker",
     icon: ShieldCheck,
     description:
       "Review potential overlaps and give original ideas the attention and attribution they deserve.",
@@ -47,6 +51,7 @@ export const tools = [
   {
     name: "Grammar & Accuracy",
     short: "Refine",
+    href: "/grammar-checker",
     icon: FileCheck2,
     description:
       "Catch awkward phrasing, sharpen your grammar, and review claims before you hit publish.",
@@ -56,6 +61,7 @@ export const tools = [
   {
     name: "AI Paraphraser",
     short: "Paraphrase",
+    href: "/paraphraser",
     icon: Languages,
     description:
       "Explore a fresh way to say it. Adjust your tone and structure without losing the point.",
@@ -63,4 +69,3 @@ export const tools = [
     live: true,
   },
 ];
-
