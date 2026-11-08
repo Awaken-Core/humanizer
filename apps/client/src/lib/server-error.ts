@@ -27,10 +27,10 @@ export function sanitizeLogData(input: unknown): unknown {
   if (input === null || input === undefined) return input;
   if (typeof input === "string") {
     return input
-      .replace(/sk-[a-zA-Z0-9_\-]{15,}/g, "[REDACTED_API_KEY]")
-      .replace(/Bearer\s+[a-zA-Z0-9_\-\.]+/gi, "Bearer [REDACTED_TOKEN]")
-      .replace(/mongodb(\+srv)?:\/\/[^\s]+/gi, "[REDACTED_DB_URL]")
-      .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "[REDACTED_EMAIL]");
+      .replace(/sk-[a-zA-Z0-9_-]{15,}/g, "[REDACTED_API_KEY]")
+      .replace(/Bearer\s+[a-zA-Z0-9._-]+/gi, "Bearer [REDACTED_TOKEN]")
+      .replace(/mongodb(?:\+srv)?:\/\/\S+/gi, "[REDACTED_DB_URL]")
+      .replace(/[a-zA-Z0-9._%+-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}/g, "[REDACTED_EMAIL]");
   }
   if (input instanceof Error) {
     return {

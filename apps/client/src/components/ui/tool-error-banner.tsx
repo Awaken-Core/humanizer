@@ -45,11 +45,15 @@ export function ToolErrorBanner({
 
   if (!errorObj) return null;
 
-  const handleCopyRequestId = () => {
+  const handleCopyRequestId = async () => {
     if (errorObj.requestId) {
-      navigator.clipboard.writeText(errorObj.requestId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      try {
+        await navigator.clipboard.writeText(errorObj.requestId);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        // Ignore clipboard access rejection
+      }
     }
   };
 
