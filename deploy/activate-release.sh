@@ -11,6 +11,7 @@ release="$base/releases/$release_id"
 node_bin="$(command -v node)"
 "$node_bin" -e 'const [major, minor] = process.versions.node.split(".").map(Number); if (major < 22 || (major === 22 && minor < 12)) process.exit(1)'
 command -v curl >/dev/null
+pm2_bin="$(command -v pm2)"
 sudo -n true
 mkdir -p "$base/releases"
 test ! -e "$release"
@@ -25,41 +26,35 @@ const path = require('node:path');
 Object.assign(process.env, JSON.parse(fs.readFileSync(path.join(__dirname, 'runtime.json'), 'utf8')));
 NODE
 
-service_file="$(mktemp)"
-trap 'rm -f "$service_file"' EXIT
-cat > "$service_file" <<SERVICE
-[Unit]
-Description=Humanizer Next.js
-After=network-online.target
-Wants=network-online.target
+# PM2 runs as the SSH user, never as root. Configure its boot hook once.
+if ! sudo -n systemctl cat pm2-humarizer.service >/dev/null 2>&1; then
+  sudo -n env PATH="$PATH" "$pm2_bin" startup systemd -u humarizer --hp /home/humarizer
+fi
+sudo -n systemctl enable pm2-humarizer.service
 
-[Service]
-User=humarizer
-WorkingDirectory=$base/current/apps/client
-Environment=NODE_ENV=production
-Environment=HOSTNAME=127.0.0.1
-Environment=PORT=3000
-Environment=NODE_OPTIONS=--max-old-space-size=512
-ExecStart=$node_bin --require ./runtime-env.cjs server.js
-Restart=on-failure
-RestartSec=5
-NoNewPrivileges=true
-PrivateTmp=true
-UMask=0077
-
-[Install]
-WantedBy=multi-user.target
-SERVICE
-sudo -n install -m 644 "$service_file" /etc/systemd/system/humanizer.service
-sudo -n systemctl daemon-reload
+# One-time migration: release port 3000 from the former app-specific service.
+if sudo -n systemctl cat humanizer.service >/dev/null 2>&1; then
+  sudo -n systemctl disable --now humanizer.service
+fi
 previous="$(readlink -f "$base/current" || true)"
 ln -s "$release" "$base/current.next"
 mv -Tf "$base/current.next" "$base/current"
-sudo -n systemctl enable humanizer.service
+
+start_release() {
+  local target="$1/apps/client"
+  if "$pm2_bin" describe humanizer >/dev/null 2>&1; then
+    "$pm2_bin" delete humanizer
+  fi
+  NODE_ENV=production HOSTNAME=127.0.0.1 PORT=3000 \
+    "$pm2_bin" start "$target/server.js" --name humanizer \
+    --cwd "$target" --interpreter "$node_bin" \
+    --node-args="--max-old-space-size=512 --require ./runtime-env.cjs" \
+    --restart-delay 5000 --time
+}
 
 healthy() {
   for attempt in {1..30}; do
-    if sudo -n systemctl is-active --quiet humanizer.service && curl --fail --silent --max-time 5 http://127.0.0.1:3000/api/auth/ok >/dev/null; then
+    if curl --fail --silent --max-time 5 http://127.0.0.1:3000/api/auth/ok >/dev/null; then
       return 0
     fi
     sleep 2
@@ -67,7 +62,8 @@ healthy() {
   return 1
 }
 
-if sudo -n systemctl restart humanizer.service && healthy; then
+if start_release "$release" && healthy; then
+  "$pm2_bin" save
   rm -f "$incoming/runtime.json" "$incoming/humanizer.tgz" "$incoming/activate-release.sh"
   rmdir "$incoming"
   echo "Deployed $release_id"
@@ -76,10 +72,15 @@ else
   if [[ -n "$previous" && "$previous" != "$release" && -d "$previous" ]]; then
     ln -s "$previous" "$base/current.rollback"
     mv -Tf "$base/current.rollback" "$base/current"
-    sudo -n systemctl restart humanizer.service
-    echo 'Restored previous release.'
+    if start_release "$previous" && healthy; then
+      "$pm2_bin" save
+      echo 'Restored previous release.'
+    else
+      echo 'Previous release also failed its health check.'
+    fi
   else
-    sudo -n systemctl stop humanizer.service
+    if "$pm2_bin" describe humanizer >/dev/null 2>&1; then "$pm2_bin" delete humanizer; fi
+    "$pm2_bin" save --force
   fi
   exit 1
 fi

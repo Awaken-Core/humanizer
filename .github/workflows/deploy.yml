@@ -41,7 +41,7 @@ jobs:
                   test -n "$GCP_HOST" || { echo 'Set GCP_HOST'; exit 1; }
                   [[ "$GCP_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]] || { echo 'GCP_HOST must be a hostname or IPv4 address'; exit 1; }
                   [[ "$SSH_PORT" =~ ^[0-9]+$ ]] || exit 1
-                  node -e 'const u = new URL(process.env.NEXT_PUBLIC_APP_BASE_URL); if (u.protocol !== "https:" || u.origin !== process.env.NEXT_PUBLIC_APP_BASE_URL) throw new Error("Set NEXT_PUBLIC_APP_BASE_URL to an HTTPS origin without a trailing slash")'
+                  node -e 'const value = process.env.NEXT_PUBLIC_APP_BASE_URL; const u = new URL(value); const temporaryIp = u.protocol === "http:" && require("node:net").isIP(u.hostname) === 4 && u.hostname === process.env.GCP_HOST && !u.port; if ((u.protocol !== "https:" && !temporaryIp) || u.origin !== value) throw new Error("Use an HTTPS origin or http://GCP_HOST for temporary IP access, without a trailing slash")'
 
             - run: bun install --frozen-lockfile
             - name: Build standalone application
