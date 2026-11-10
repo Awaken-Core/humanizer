@@ -41,6 +41,7 @@ Before the first deployment, install Node.js 22.12+ (Node 22 is used by CI), cur
 In GitHub repository Settings → Secrets and variables → Actions, add:
 
 - Secret `GCP_SSH_PRIVATE_KEY`: the complete private key matching the public key installed on the VM.
+- Secret `GCP_SSH_PASSPHRASE`: the private key's passphrase. The workflow unlocks the key in a temporary SSH agent; leave this secret unset for an unencrypted key.
 - Secret `GCP_SSH_KNOWN_HOSTS`: the VM's trusted SSH host-key entry. Obtain it through a trusted connection and verify its fingerprint with the VM. For a non-default SSH port, use a `[HOST]:PORT` known-hosts entry.
 - Secret `GCP_HOST`: VM external IPv4 address or hostname. Secret `SSH_PORT`: SSH port, usually `22`.
 - Add all application settings listed below as repository Secrets, using their exact environment variable names. The workflow reads only Secrets, including public settings such as `NEXT_PUBLIC_APP_BASE_URL` and `NEXT_PUBLIC_GA_MEASUREMENT_ID`.

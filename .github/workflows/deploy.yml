@@ -79,6 +79,7 @@ jobs:
               env:
                   SSH_PRIVATE_KEY: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
                   SSH_KNOWN_HOSTS: ${{ secrets.GCP_SSH_KNOWN_HOSTS }}
+                  SSH_KEY_PASSPHRASE: ${{ secrets.GCP_SSH_PASSPHRASE }}
               run: |
                   set -euo pipefail
                   test -n "$SSH_PRIVATE_KEY" && test -n "$SSH_KNOWN_HOSTS"
@@ -86,13 +87,22 @@ jobs:
                   printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
                   printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
                   chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+                  eval "$(ssh-agent -s)"
+                  printf 'SSH_AUTH_SOCK=%s\nSSH_AGENT_PID=%s\n' "$SSH_AUTH_SOCK" "$SSH_AGENT_PID" >> "$GITHUB_ENV"
+                  cat > "$RUNNER_TEMP/ssh-askpass.sh" <<'ASKPASS'
+                  #!/usr/bin/env bash
+                  printf '%s\n' "$SSH_KEY_PASSPHRASE"
+                  ASKPASS
+                  chmod 700 "$RUNNER_TEMP/ssh-askpass.sh"
+                  DISPLAY=:0 SSH_ASKPASS="$RUNNER_TEMP/ssh-askpass.sh" SSH_ASKPASS_REQUIRE=force ssh-add "$HOME/.ssh/id_ed25519" < /dev/null
+                  rm -f "$RUNNER_TEMP/ssh-askpass.sh"
 
             - name: Upload and activate release
               env:
                   RELEASE_ID: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
               run: |
                   set -euo pipefail
-                  SSH_OPTIONS=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+                  SSH_OPTIONS=(-i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
                   remote="humarizer@$GCP_HOST"
                   ssh "${SSH_OPTIONS[@]}" -p "$SSH_PORT" "$remote" "umask 077; mkdir -p /home/humarizer/apps/humanizer/incoming/$RELEASE_ID"
                   scp "${SSH_OPTIONS[@]}" -P "$SSH_PORT" "$RUNNER_TEMP/humanizer.tgz" "$RUNNER_TEMP/runtime.json" deploy/activate-release.sh "$remote:/home/humarizer/apps/humanizer/incoming/$RELEASE_ID/"
@@ -101,4 +111,5 @@ jobs:
             - name: Remove runner credentials
               if: always()
               run: |
-                  rm -f "$RUNNER_TEMP/runtime.json" "$RUNNER_TEMP/humanizer.tgz" "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
+                  if [ -n "${SSH_AGENT_PID:-}" ]; then ssh-agent -k >/dev/null || true; fi
+                  rm -f "$RUNNER_TEMP/runtime.json" "$RUNNER_TEMP/humanizer.tgz" "$RUNNER_TEMP/ssh-askpass.sh" "$HOME/.ssh/id_ed25519" "$HOME/.ssh/known_hosts"
