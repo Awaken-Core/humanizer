@@ -21,17 +21,31 @@ cp -r apps/client/.next/static apps/client/.next/standalone/apps/client/.next/st
 
 Copy the contents of `apps/client/.next/standalone/` into `/opt/humanizer/` on the VM, preserving its directory structure. The entry point is `/opt/humanizer/apps/client/server.js`. Install a supported Node.js version compatible with the dependencies (Node 22.12+), Nginx, and create a dedicated `humanizer` system user with access to the artifact and write access to `.next/cache`.
 
-Create `/etc/humanizer.env` using `.env.example`, with production values and `NODE_ENV=production`; restrict it to root with `chmod 600`. Copy `deploy/humanizer.service` to `/etc/systemd/system/`, then run:
+The GitHub deployment workflow installs `humanizer.service` and writes runtime configuration into the private release directory. For a manual installation, create an equivalent systemd service and supply the environment settings listed below. Inspect the deployed service with:
 
 ```sh
-sudo systemctl daemon-reload
-sudo systemctl enable --now humanizer
+sudo systemctl status humanizer
 sudo journalctl -u humanizer
 ```
 
 The service runs one process with a 512 MiB V8 heap limit. This does not cap total process memory. Monitor memory and latency; increase VM size if traffic or document processing exhausts capacity.
 
-Adapt `deploy/nginx.conf` to your domain and configure HTTPS certificates. Open public ports 80/443; keep port 3000 private. The example assumes clients connect directly to Nginx and overwrites forwarded IP headers for trustworthy anonymous rate limits. Adjust proxy trust if adding a load balancer.
+Configure Nginx for your domain with HTTPS certificates and proxy requests to `127.0.0.1:3000`. Open public ports 80/443; keep port 3000 private. Overwrite `X-Forwarded-For` with `$remote_addr` for trustworthy anonymous rate limits when clients connect directly to Nginx. Allow a 180-second proxy read timeout for AI tools and disable proxy buffering. Adjust proxy trust if adding a load balancer.
+
+## GitHub Actions deployment
+
+`.github/workflows/deploy.yml` runs on pushes to `main` and manual dispatch. It builds on Ubuntu, connects as `humanizer`, and deploys to `/home/humanizer/apps/humanizer/releases/`. A `current` symlink selects the active release. The workflow installs/restarts `humanizer.service`, checks `/api/auth/ok` (including MongoDB initialization), and restores the previous release if the check fails. Old releases are retained; remove obsolete releases periodically to manage disk usage.
+
+Before the first deployment, install Node.js 22.12+ (Node 22 is used by CI), curl, tar, and Nginx on the VM. Ensure `humanizer` can SSH with the installed public key, write to its home directory, and use passwordless sudo for the service installation/restart. Allow SSH from the GitHub runner; ordinary GitHub-hosted runners do not have a single fixed source IP. This workflow uses direct SSH, not GCP service-account authentication or IAP.
+
+In GitHub repository Settings → Secrets and variables → Actions, add:
+
+- Secret `GCP_SSH_PRIVATE_KEY`: the complete private key matching the public key installed on the VM.
+- Secret `GCP_SSH_KNOWN_HOSTS`: the VM's trusted SSH host-key entry. Obtain it through a trusted connection and verify its fingerprint with the VM. For a non-default SSH port, use a `[HOST]:PORT` known-hosts entry.
+- Secret `GCP_HOST`: VM external IPv4 address or hostname. Secret `SSH_PORT`: SSH port, usually `22`.
+- Add all application settings listed below as repository Secrets, using their exact environment variable names. The workflow reads only Secrets, including public settings such as `NEXT_PUBLIC_APP_BASE_URL` and `NEXT_PUBLIC_GA_MEASUREMENT_ID`.
+
+Runtime credentials are written as JSON with restricted permissions and loaded before the standalone server starts. They are transferred over SSH separately from the build archive. The workflow does not configure DNS, Nginx, TLS, Atlas network access, or GCP firewall rules. Do not trigger deployment until those VM prerequisites are ready.
 
 ## Database and APIs
 
