@@ -1,4 +1,4 @@
-import { afterEach, expect, mock, test } from "bun:test";
+import { expect, mock, test } from "bun:test";
 
 const connections: Array<ReturnType<typeof makeConnection>> = [];
 function makeConnection() {
@@ -24,7 +24,6 @@ mock.module("mongoose", () => ({ default: {
   },
 } }));
 const { client, scopedModel, withDatabaseScope } = await import("../src/lib/db");
-afterEach(() => { connections.length = 0; });
 
 test("does not connect on import or for handlers that do not need MongoDB", async () => {
   expect(connections).toHaveLength(0);
@@ -32,7 +31,7 @@ test("does not connect on import or for handlers that do not need MongoDB", asyn
   expect(connections).toHaveLength(0);
 });
 
-test("reuses a connection within a request and closes it before returning", async () => {
+test("reuses the pool across requests without closing it", async () => {
   await withDatabaseScope(async () => {
     const first = await client();
     const second = await client();
@@ -40,10 +39,12 @@ test("reuses a connection within a request and closes it before returning", asyn
     expect(connections[0].close).not.toHaveBeenCalled();
   })();
   expect(connections).toHaveLength(1);
-  expect(connections[0].close).toHaveBeenCalledTimes(1);
+  await withDatabaseScope(async () => { await client(); })();
+  expect(connections).toHaveLength(1);
+  expect(connections[0].close).not.toHaveBeenCalled();
 });
 
-test("concurrent requests resolve model operations to separate connections", async () => {
+test("concurrent requests resolve model operations to the shared connection", async () => {
   const template = { modelName: "Document", schema: {}, collection: { name: "documents" }, find() {} };
   const model = scopedModel(template);
   await Promise.all([1, 2, 3].map(() => withDatabaseScope(async () => {
@@ -51,18 +52,18 @@ test("concurrent requests resolve model operations to separate connections", asy
     await Promise.resolve();
     expect(model.find()).toBe(connection);
   })()));
-  expect(connections).toHaveLength(3);
-  for (const connection of connections) expect(connection.close).toHaveBeenCalledTimes(1);
+  expect(connections).toHaveLength(1);
+  expect(connections[0].close).not.toHaveBeenCalled();
 });
 
-test("closes connections when the handler throws", async () => {
+test("keeps the pool available when a handler throws", async () => {
   await expect(withDatabaseScope(async () => {
     await client();
     throw new Error("handler failed");
   })()).rejects.toThrow("handler failed");
-  expect(connections[0].close).toHaveBeenCalledTimes(1);
+  expect(connections[0].close).not.toHaveBeenCalled();
 });
 
-test("rejects database access outside a request scope", async () => {
-  await expect(client()).rejects.toThrow("withDatabaseScope");
+test("supports database access outside route wrappers", async () => {
+  expect((await client()).connection).toBe(connections[0]);
 });

@@ -1,46 +1,46 @@
-import { AsyncLocalStorage } from "node:async_hooks";
 import mongoose from "mongoose";
 import { env } from "./env";
 
-type DatabaseScope = {
+type DatabaseCache = {
   connection?: mongoose.Connection;
   pending?: Promise<mongoose.Connection>;
 };
-const databaseScope = new AsyncLocalStorage<DatabaseScope>();
+const globalDatabase = globalThis as typeof globalThis & { databaseCache?: DatabaseCache };
+const databaseCache = globalDatabase.databaseCache ??= {};
 
-// Workers sockets belong to the request that opened them.
+// Keep route wrappers compatible while sharing one bounded pool per Node process.
 export function withDatabaseScope<Args extends unknown[], Result>(
   handler: (...args: Args) => Promise<Result>,
 ): (...args: Args) => Promise<Result> {
-  return (...args) => databaseScope.run({}, async () => {
-    const scope = databaseScope.getStore()!;
-    try {
-      return await handler(...args);
-    } finally {
-      await scope.connection?.close();
-    }
-  });
+  return handler;
 }
 
 export async function client() {
-  const scope = databaseScope.getStore();
-  if (!scope) throw new Error("Database access requires withDatabaseScope.");
+  const scope = databaseCache;
   if (!scope.pending) {
     scope.connection = mongoose.createConnection(env.MONGODB_URI, {
-      maxPoolSize: 1,
+      maxPoolSize: 5,
       minPoolSize: 0,
       autoIndex: false,
       serverSelectionTimeoutMS: 10_000,
+      maxIdleTimeMS: 60_000,
+      waitQueueTimeoutMS: 10_000,
     });
-    scope.pending = scope.connection.asPromise();
+    scope.pending = scope.connection.asPromise().catch(async (error) => {
+      const failedConnection = scope.connection;
+      scope.pending = undefined;
+      scope.connection = undefined;
+      await failedConnection?.close().catch(() => {});
+      throw error;
+    });
   }
   return { connection: await scope.pending };
 }
 
-// Templates only hold schemas. Bind model operations to the request connection.
+// Templates only hold schemas. Bind model operations to the shared connection.
 export function scopedModel<T extends object>(template: T): T {
   function currentModel() {
-    const connection = databaseScope.getStore()?.connection;
+    const connection = databaseCache.connection;
     if (!connection || connection.readyState !== 1) {
       throw new Error("Call client() before using a database model.");
     }

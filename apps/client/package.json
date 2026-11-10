@@ -8,12 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:deepseek": "bun run scripts/test-deepseek.ts",
-    "build:worker": "opennextjs-cloudflare build",
-    "preview": "bun run build:worker && opennextjs-cloudflare preview",
-    "deploy": "bun run build:worker && opennextjs-cloudflare deploy",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "check:worker": "bun run build:worker && wrangler deploy --dry-run",
-    "test:workers": "bun test scripts/test-workers-db.test.ts"
+    "test:db": "bun test scripts/test-db.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",
@@ -27,7 +22,7 @@
     "@hugeicons/core-free-icons": "4.4.0",
     "@hugeicons/react": "1.1.10",
     "@next/third-parties": "16.4.5",
-    "@opennextjs/cloudflare": "^1.20.16",
+
     "@t3-oss/env-nextjs": "^0.13.11",
     "@tanstack/react-query": "5.107.1",
     "@tanstack/react-table": "9.3.1",
@@ -107,8 +102,7 @@
     "eslint-config-next": "16.4.5",
     "tailwindcss": "4.3.5",
     "tsx": "^4.23.15",
-    "typescript": "7.0.2",
-    "wrangler": "^4.158.0"
+    "typescript": "7.0.2"
   },
   "browserslist": [
     "chrome >= 100",
