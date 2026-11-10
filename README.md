@@ -19,7 +19,7 @@ cp -r apps/client/public apps/client/.next/standalone/apps/client/public
 cp -r apps/client/.next/static apps/client/.next/standalone/apps/client/.next/static
 ```
 
-Copy the contents of `apps/client/.next/standalone/` into `/opt/humanizer/` on the VM, preserving its directory structure. The entry point is `/opt/humanizer/apps/client/server.js`. Install a supported Node.js version compatible with the dependencies (Node 22.12+), Nginx, and create a dedicated `humanizer` system user with access to the artifact and write access to `.next/cache`.
+Copy the contents of `apps/client/.next/standalone/` into `/opt/humanizer/` on the VM, preserving its directory structure. The entry point is `/opt/humanizer/apps/client/server.js`. Install a supported Node.js version compatible with the dependencies (Node 22.12+), Nginx, and create a dedicated `humarizer` system user with access to the artifact and write access to `.next/cache`.
 
 The GitHub deployment workflow installs `humanizer.service` and writes runtime configuration into the private release directory. For a manual installation, create an equivalent systemd service and supply the environment settings listed below. Inspect the deployed service with:
 
@@ -34,9 +34,9 @@ Configure Nginx for your domain with HTTPS certificates and proxy requests to `1
 
 ## GitHub Actions deployment
 
-`.github/workflows/deploy.yml` runs on pushes to `main` and manual dispatch. It builds on Ubuntu, connects as `humanizer`, and deploys to `/home/humanizer/apps/humanizer/releases/`. A `current` symlink selects the active release. The workflow installs/restarts `humanizer.service`, checks `/api/auth/ok` (including MongoDB initialization), and restores the previous release if the check fails. Old releases are retained; remove obsolete releases periodically to manage disk usage.
+`.github/workflows/deploy.yml` runs on pushes to `release/prod` and manual dispatch. It builds on Ubuntu, connects as `humarizer`, and deploys to `/home/humarizer/apps/humanizer/releases/`. A `current` symlink selects the active release. The workflow installs/restarts `humanizer.service`, checks `/api/auth/ok` (including MongoDB initialization), and restores the previous release if the check fails. Old releases are retained; remove obsolete releases periodically to manage disk usage.
 
-Before the first deployment, install Node.js 22.12+ (Node 22 is used by CI), curl, tar, and Nginx on the VM. Ensure `humanizer` can SSH with the installed public key, write to its home directory, and use passwordless sudo for the service installation/restart. Allow SSH from the GitHub runner; ordinary GitHub-hosted runners do not have a single fixed source IP. This workflow uses direct SSH, not GCP service-account authentication or IAP.
+Before the first deployment, install Node.js 22.12+ (Node 22 is used by CI), curl, tar, and Nginx on the VM. Ensure `humarizer` can SSH with the installed public key, write to its home directory, and use passwordless sudo for the service installation/restart. Allow SSH from the GitHub runner; ordinary GitHub-hosted runners do not have a single fixed source IP. This workflow uses direct SSH, not GCP service-account authentication or IAP.
 
 In GitHub repository Settings → Secrets and variables → Actions, add:
 

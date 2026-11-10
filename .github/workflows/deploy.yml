@@ -93,10 +93,10 @@ jobs:
               run: |
                   set -euo pipefail
                   SSH_OPTIONS=(-i "$HOME/.ssh/id_ed25519" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
-                  remote="humanizer@$GCP_HOST"
-                  ssh "${SSH_OPTIONS[@]}" -p "$SSH_PORT" "$remote" "umask 077; mkdir -p /home/humanizer/apps/humanizer/incoming/$RELEASE_ID"
-                  scp "${SSH_OPTIONS[@]}" -P "$SSH_PORT" "$RUNNER_TEMP/humanizer.tgz" "$RUNNER_TEMP/runtime.json" deploy/activate-release.sh "$remote:/home/humanizer/apps/humanizer/incoming/$RELEASE_ID/"
-                  ssh "${SSH_OPTIONS[@]}" -p "$SSH_PORT" "$remote" "bash /home/humanizer/apps/humanizer/incoming/$RELEASE_ID/activate-release.sh $RELEASE_ID"
+                  remote="humarizer@$GCP_HOST"
+                  ssh "${SSH_OPTIONS[@]}" -p "$SSH_PORT" "$remote" "umask 077; mkdir -p /home/humarizer/apps/humanizer/incoming/$RELEASE_ID"
+                  scp "${SSH_OPTIONS[@]}" -P "$SSH_PORT" "$RUNNER_TEMP/humanizer.tgz" "$RUNNER_TEMP/runtime.json" deploy/activate-release.sh "$remote:/home/humarizer/apps/humanizer/incoming/$RELEASE_ID/"
+                  ssh "${SSH_OPTIONS[@]}" -p "$SSH_PORT" "$remote" "bash /home/humarizer/apps/humanizer/incoming/$RELEASE_ID/activate-release.sh $RELEASE_ID"
 
             - name: Remove runner credentials
               if: always()
