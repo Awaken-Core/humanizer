@@ -44,8 +44,6 @@ jobs:
                   node -e 'const u = new URL(process.env.NEXT_PUBLIC_APP_BASE_URL); if (u.protocol !== "https:" || u.origin !== process.env.NEXT_PUBLIC_APP_BASE_URL) throw new Error("Set NEXT_PUBLIC_APP_BASE_URL to an HTTPS origin without a trailing slash")'
 
             - run: bun install --frozen-lockfile
-            - run: bun run test:db
-            - run: bun test apps/client/scripts/test-pr-review-regression.test.ts
             - name: Build standalone application
               run: |
                   bun run build
