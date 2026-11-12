@@ -1,3 +1,4 @@
+import { createTrackedCompletion } from "@/lib/board-billing.server";
 import { getDeepSeekClient, DEEPSEEK_CONFIG } from "@/lib/ai/deepseek.client";
 import { ANALYSIS_SYSTEM_PROMPT } from "./humanizer.prompts";
 import { AnalysisParseError, ProviderApiError, WritingAnalysisSchema } from "./humanizer.schema";
@@ -45,7 +46,7 @@ export async function analyzeText(text: string): Promise<{
   const model = DEEPSEEK_CONFIG.defaultModel;
 
   try {
-    const response = await client.chat.completions.create({
+    const response = await createTrackedCompletion(client, {
       model,
       messages: [
         {

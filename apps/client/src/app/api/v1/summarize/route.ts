@@ -1,3 +1,4 @@
+import { withBoardUsage } from "@/lib/board-billing.server";
 import { withDatabaseScope } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { HumanizerError } from "@/features/humanizer";
@@ -39,11 +40,38 @@ async function handlePOST(req: NextRequest) {
       },
     });
 
-    const result = await summarizeText(data);
+    const { result, usage } = await withBoardUsage(
+      requestContext.documentId ? jobId : undefined,
+      () => summarizeText(data),
+    );
+
+    const responseData = {
+      jobId,
+      originalText: result.originalText,
+      summaryText: result.summaryText,
+      selectedMode: result.selectedMode.toLowerCase(),
+      selectedIntensity: result.selectedIntensity.toLowerCase(),
+      processingMetadata: {
+        model: result.processingMetadata.model,
+        duration: result.processingMetadata.durationMs,
+        tokenUsage: result.processingMetadata.tokens
+          ? {
+              promptTokens:
+                result.processingMetadata.tokens.promptTokens ?? 0,
+              completionTokens:
+                result.processingMetadata.tokens.completionTokens ?? 0,
+              totalTokens:
+                result.processingMetadata.tokens.totalTokens ?? 0,
+            }
+          : undefined,
+      },
+    };
     await completeAiJob(
       jobId,
       { content: result.summaryText },
       {
+        boardUsage: usage,
+        replayData: responseData,
         model: result.processingMetadata.model,
         durationMs: result.processingMetadata.durationMs,
         promptTokens: result.processingMetadata.tokens?.promptTokens,
@@ -52,30 +80,7 @@ async function handlePOST(req: NextRequest) {
     );
 
     return NextResponse.json(
-      {
-        success: true,
-        data: {
-          jobId,
-          originalText: result.originalText,
-          summaryText: result.summaryText,
-          selectedMode: result.selectedMode.toLowerCase(),
-          selectedIntensity: result.selectedIntensity.toLowerCase(),
-          processingMetadata: {
-            model: result.processingMetadata.model,
-            duration: result.processingMetadata.durationMs,
-            tokenUsage: result.processingMetadata.tokens
-              ? {
-                  promptTokens:
-                    result.processingMetadata.tokens.promptTokens ?? 0,
-                  completionTokens:
-                    result.processingMetadata.tokens.completionTokens ?? 0,
-                  totalTokens:
-                    result.processingMetadata.tokens.totalTokens ?? 0,
-                }
-              : undefined,
-          },
-        },
-      },
+      { success: true, data: responseData },
       {
         status: 200,
         headers: {

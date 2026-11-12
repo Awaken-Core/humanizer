@@ -1,3 +1,4 @@
+import { createTrackedCompletion } from "@/lib/board-billing.server";
 import { DEEPSEEK_CONFIG, getDeepSeekClient } from "@/lib/ai/deepseek.client";
 import {
   HumanizeTextInputSchema,
@@ -40,7 +41,7 @@ async function generateSummary(
   const model = DEEPSEEK_CONFIG.defaultModel;
 
   try {
-    const response = await client.chat.completions.create({
+    const response = await createTrackedCompletion(client, {
       model,
       messages: [
         {

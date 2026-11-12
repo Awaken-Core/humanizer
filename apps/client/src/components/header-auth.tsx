@@ -40,7 +40,7 @@ import { toast } from "sonner";
 
 const subscribeToMount = () => () => {};
 
-export function HeaderAuth({ compact = false }: { compact?: boolean }) {
+export function HeaderAuth({ compact = false, callbackURL = "/" }: { compact?: boolean; callbackURL?: string }) {
   const mounted = useSyncExternalStore(
     subscribeToMount,
     () => true,
@@ -89,12 +89,12 @@ export function HeaderAuth({ compact = false }: { compact?: boolean }) {
 
     try {
       const result = isLogin
-        ? await signIn.email({ email, password, callbackURL: "/" })
+        ? await signIn.email({ email, password, callbackURL })
         : await signUp.email({
             name: String(formData.get("name")),
             email,
             password,
-            callbackURL: "/",
+            callbackURL,
           });
 
       if (result.error) {
@@ -119,7 +119,7 @@ export function HeaderAuth({ compact = false }: { compact?: boolean }) {
     try {
       const result = await signIn.social({
         provider: "google",
-        callbackURL: "/",
+        callbackURL,
       });
       if (result?.error) {
         const message =

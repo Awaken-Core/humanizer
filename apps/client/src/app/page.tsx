@@ -35,8 +35,8 @@ const faqs = [
     "Yes. The humanizer workspace allows you to select between natural, academic, professional, and casual modes, with adjustable rewriting intensity levels to fit your publication context.",
   ],
   [
-    "Are all writing tools completely free?",
-    "Yes! All core tools—AI Humanizer, AI Content Detector, Plagiarism Detector, Grammar & Accuracy, Paraphraser, and Summarizer—are free to use without mandatory subscriptions or restrictive 125-word paywalls.",
+    "How does pricing work?",
+    "Humanizer does not require a subscription. Where credit packs are available, you can buy credits with a one-time payment.",
   ],
   [
     "Is my draft data logged or used for model training?",

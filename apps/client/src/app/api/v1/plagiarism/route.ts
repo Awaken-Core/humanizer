@@ -1,3 +1,4 @@
+import { withBoardUsage } from "@/lib/board-billing.server";
 import { withDatabaseScope } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { checkPlagiarism, PlagiarismError } from "@/features/plagiarism";
@@ -41,21 +42,11 @@ async function handlePOST(req: NextRequest) {
       input: { text: data.text },
     });
 
-    const result = await checkPlagiarism(data);
-
-    await completeAiJob(
-      jobId,
-      {
-        scores: result.scores,
-        wordCount: result.wordCount,
-        sentenceCount: result.sentenceCount,
-        processingTimeMs: result.processingTimeMs,
-      },
-      {
-        model: "retrieval+scoring",
-        durationMs: result.processingTimeMs,
-      },
+    const { result, usage } = await withBoardUsage(
+      requestContext.documentId ? jobId : undefined,
+      () => checkPlagiarism(data),
     );
+
 
     await client();
     const report = await PlagiarismReport.create({
@@ -87,32 +78,46 @@ async function handlePOST(req: NextRequest) {
       processingTimeMs: result.processingTimeMs,
     });
 
-    return NextResponse.json(
+    const responseData = {
+      jobId,
+      reportId: String(report._id),
+      scores: result.scores,
+      sources: result.sources.map((s) => ({
+        url: s.url,
+        title: s.title,
+        domain: s.domain,
+        author: s.author,
+        publishDate: s.publishDate,
+        matchPercentage: s.matchPercentage,
+        matchedWordCount: s.matchedWordCount,
+        isExcluded: s.isExcluded,
+        retrievedAt: s.retrievedAt,
+      })),
+      matches: result.matches,
+      wordCount: result.wordCount,
+      sentenceCount: result.sentenceCount,
+      summary: result.summary,
+      processingTimeMs: result.processingTimeMs,
+      settings: result.settings,
+    };
+    await completeAiJob(
+      jobId,
       {
-        success: true,
-        data: {
-          jobId,
-          reportId: String(report._id),
-          scores: result.scores,
-          sources: result.sources.map((s) => ({
-            url: s.url,
-            title: s.title,
-            domain: s.domain,
-            author: s.author,
-            publishDate: s.publishDate,
-            matchPercentage: s.matchPercentage,
-            matchedWordCount: s.matchedWordCount,
-            isExcluded: s.isExcluded,
-            retrievedAt: s.retrievedAt,
-          })),
-          matches: result.matches,
-          wordCount: result.wordCount,
-          sentenceCount: result.sentenceCount,
-          summary: result.summary,
-          processingTimeMs: result.processingTimeMs,
-          settings: result.settings,
-        },
+        scores: result.scores,
+        wordCount: result.wordCount,
+        sentenceCount: result.sentenceCount,
+        processingTimeMs: result.processingTimeMs,
       },
+      {
+        boardUsage: usage,
+        replayData: responseData,
+        model: "retrieval+scoring",
+        durationMs: result.processingTimeMs,
+      },
+    );
+
+    return NextResponse.json(
+      { success: true, data: responseData },
       {
         status: 200,
         headers: {

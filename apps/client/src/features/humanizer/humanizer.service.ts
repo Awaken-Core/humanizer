@@ -120,6 +120,7 @@ export async function humanizeText(
   // 4. Stage 2: Rewriting with Selected Strategy
   const rewriteResult = await rewriteText({
     text: processedText,
+    originalText: text,
     analysis,
     mode,
     intensity,

@@ -73,6 +73,58 @@ export const TOOL_CLIENT_TIMEOUTS_MS: Record<ToolId, number> = {
   "ai-detector": 18_000,
 };
 
+const BOARD_RETRY_WINDOW_MS = 75_000;
+
+function waitForBoardRetry(signal: AbortSignal) {
+  return new Promise<void>((resolve) => {
+    if (signal.aborted) return resolve();
+    const done = () => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", done);
+      resolve();
+    };
+    const timer = setTimeout(done, 1_500);
+    signal.addEventListener("abort", done, { once: true });
+  });
+}
+
+async function fetchToolResult(endpoint: string, init: RequestInit, timeout: number, board: boolean) {
+  if (!board) {
+    const response = await fetch(endpoint, init);
+    try {
+      return { response, jsonPayload: await response.json() as unknown };
+    } catch {
+      throw new Error("Unable to parse server response.");
+    }
+  }
+
+  const signal = init.signal!;
+  const deadline = Date.now() + timeout + BOARD_RETRY_WINDOW_MS;
+  let attemptTimeout = timeout;
+  let lastError: unknown;
+  while (!signal.aborted && Date.now() < deadline) {
+    try {
+      const response = await fetch(endpoint, {
+        ...init,
+        signal: AbortSignal.any([signal, AbortSignal.timeout(attemptTimeout)]),
+      });
+      const jsonPayload: unknown = await response.json();
+      const parsed = ToolApiResponseDto.safeParse(jsonPayload);
+      const code = parsed.success ? parsed.data.error?.code : undefined;
+      if (code !== "BOARD_RUN_PENDING" && code !== "DUPLICATE_BOARD_RUN" &&
+          !(response.status >= 500 && !parsed.success)) {
+        return { response, jsonPayload };
+      }
+    } catch (error) {
+      lastError = error;
+    }
+    attemptTimeout = 10_000;
+    await waitForBoardRetry(signal);
+  }
+  signal.throwIfAborted();
+  throw lastError ?? new Error("The original Board run is still processing. Check your document history for the result.");
+}
+
 export const DEFAULT_TOOL_PREFERENCES: Record<ToolId, ToolPreferences> = {
   humanizer: { mode: "natural", intensity: "medium" },
   paraphraser: { tone: "standard", focus: "both" },
@@ -251,7 +303,7 @@ export const useToolStore = create<ToolStore>((set, get) => ({
     const toolTimeout = TOOL_CLIENT_TIMEOUTS_MS[service] ?? 50_000;
     const timeoutId = setTimeout(() => {
       abortController.abort();
-    }, toolTimeout);
+    }, toolTimeout + (request.documentId ? BOARD_RETRY_WINDOW_MS : 0));
 
     const nextGeneration = (get().toolGenerations[service] ?? 0) + 1;
 
@@ -293,23 +345,19 @@ export const useToolStore = create<ToolStore>((set, get) => ({
       const { service: reqService, documentId, inputSource, ...payload } = request;
       const tool = getToolDefinition(reqService);
 
-      const response = await fetch(tool.endpoint, {
+      const boardHeaders: Record<string, string> = documentId
+        ? { "X-Document-Id": documentId, "X-Idempotency-Key": crypto.randomUUID() }
+        : {};
+      const { response, jsonPayload } = await fetchToolResult(tool.endpoint, {
         method: "POST",
         signal: abortController.signal,
         headers: {
           "Content-Type": "application/json",
-          ...(documentId ? { "X-Document-Id": documentId } : {}),
+          ...boardHeaders,
           ...(inputSource ? { "X-Tool-Input-Source": inputSource } : {}),
         },
         body: JSON.stringify(payload),
-      });
-
-      let jsonPayload: unknown;
-      try {
-        jsonPayload = await response.json();
-      } catch {
-        throw new Error("Unable to parse server response.");
-      }
+      }, toolTimeout, Boolean(documentId));
 
       // Check if this request was superseded by a newer request for this tool
       if (get().toolGenerations[service] !== nextGeneration) {

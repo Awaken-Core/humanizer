@@ -1,3 +1,4 @@
+import { createTrackedCompletion } from "@/lib/board-billing.server";
 if (typeof window !== "undefined") {
   throw new Error("This module can only be used on the server.");
 }
@@ -95,7 +96,7 @@ export async function generatePlagiarismSummary(
     const model = DEEPSEEK_CONFIG.defaultModel;
     const userPrompt = buildReporterUserPrompt(scores, sources, wordCount);
 
-    const response = await client.chat.completions.create({
+    const response = await createTrackedCompletion(client, {
       model,
       messages: [
         { role: "system", content: PLAGIARISM_REPORTER_SYSTEM_PROMPT },

@@ -1,10 +1,17 @@
-﻿import { z } from "zod";
+import { z } from "zod";
 import { createEnv } from "@t3-oss/env-nextjs";
 import { PHASE_PRODUCTION_BUILD } from "next/constants";
 
 export const env = createEnv({
   emptyStringAsUndefined: true,
   server: {
+    BOARD_INPUT_MICROCREDITS_PER_1K_TOKENS: z.coerce.number().int().positive().max(1_000_000_000).optional(),
+    BOARD_OUTPUT_MICROCREDITS_PER_1K_TOKENS: z.coerce.number().int().positive().max(1_000_000_000).optional(),
+    DODO_PAYMENTS_ENVIRONMENT: z.enum(["test_mode", "live_mode"]).default("test_mode"),
+    DODO_PAYMENTS_API_KEY: z.string().optional(),
+    DODO_PAYMENTS_WEBHOOK_KEY: z.string().optional(),
+    DODO_PAYMENTS_PRODUCT_ID: z.string().optional(),
+    DODO_PAYMENTS_PACK_CREDITS: z.coerce.number().int().positive().max(1_000_000).optional(),
     MONGODB_URI: z.string().min(1),
     NODE_ENV: z.string().min(1),
     GOOGLE_CLIENT_ID: z.string().min(1),

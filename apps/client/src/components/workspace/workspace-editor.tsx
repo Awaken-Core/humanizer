@@ -237,9 +237,34 @@ export function WorkspaceEditor({ service }: WorkspaceEditorProps) {
 
   const characterCount = inputText.length;
 
-  const maxInputLength = session?.user
-    ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
-    : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
+  const [publicEntitlement, setPublicEntitlement] = useState<{ userId: string; limit: number }>();
+  const userId = session?.user.id;
+  useEffect(() => {
+    if (!userId || service !== "humanizer") return;
+    const controller = new AbortController();
+    async function refreshLimit() {
+      try {
+        const response = await fetch("/api/v1/credits", { signal: controller.signal, cache: "no-store" });
+        if (!response.ok || controller.signal.aborted) return;
+        const { publicHumanizerLimit } = await response.json();
+        if (!controller.signal.aborted && userId && typeof publicHumanizerLimit === "number") {
+          setPublicEntitlement({ userId, limit: publicHumanizerLimit });
+        }
+      } catch {
+        // The server still validates the request if the entitlement lookup fails.
+      }
+    }
+    void refreshLimit();
+    window.addEventListener("focus", refreshLimit);
+    return () => {
+      controller.abort();
+      window.removeEventListener("focus", refreshLimit);
+    };
+  }, [service, userId]);
+
+  const maxInputLength = service === "humanizer"
+    ? (publicEntitlement && publicEntitlement.userId === userId ? publicEntitlement.limit : ANONYMOUS_MAX_INPUT_TEXT_LENGTH)
+    : userId ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
 
   const exceedsInputLimit = characterCount > maxInputLength;
   const currentSamples = SERVICE_SAMPLES[service] || [];

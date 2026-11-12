@@ -59,6 +59,7 @@
     "cmdk": "^1.1.1",
     "cn": "0.5.2",
     "date-fns": "^4.4.0",
+    "dodopayments": "2.52.0",
     "dropzone": "6.3.5",
     "embla-carousel-react": "^8.6.0",
     "flag-icons": "7.6.0",
