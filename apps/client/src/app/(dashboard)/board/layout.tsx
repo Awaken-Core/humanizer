@@ -1,3 +1,4 @@
+import { recoverBoardRuns } from "@/lib/board-billing.server";
 import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
@@ -8,6 +9,7 @@ export default async function BoardLayout({ children }: { children: ReactNode })
   const requestHeaders = await headers();
   const session = await (await getAuth()).api.getSession({ headers: requestHeaders });
   if (session) {
+    await recoverBoardRuns(session.user.id);
     const { wallets } = await creditCollections();
     const wallet = await wallets.findOne({ _id: session.user.id });
     if ((wallet?.balance ?? 0) > 0) return children;

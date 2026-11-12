@@ -49,6 +49,7 @@ async function handlePOST(req: NextRequest): Promise<NextResponse> {
 
     await completeAiJob(jobId, result, {
       boardUsage: usage,
+      replayData: result,
       model: "deterministic+deepseek",
       durationMs: Date.now() - start,
     });

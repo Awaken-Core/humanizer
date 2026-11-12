@@ -8,7 +8,7 @@ import type { NextRequest } from "next/server";
 import { getAuth } from "@/lib/auth";
 import { client } from "@/lib/db";
 import { creditCollections, CreditRequiredError } from "@/lib/credits.server";
-import { BillingError, boardRates, estimateBoardRun, finishBoardRun } from "@/lib/board-billing.server";
+import { BillingError, boardRates, estimateBoardRun, finishBoardRun, recoverBoardRuns } from "@/lib/board-billing.server";
 import { env } from "@/lib/env";
 import { AiJob } from "@/modal/ai";
 import { Document } from "@/modal/document";
@@ -21,6 +21,7 @@ export interface AiRequestContext {
   rateLimitIdentifier: string;
   documentId?: string;
   idempotencyKey?: string;
+  requestFingerprint?: string;
   inputSource?: "document" | "selection";
 }
 
@@ -98,6 +99,32 @@ interface StartJobInput {
   };
 }
 
+function boardJobId(userId: string, key: string) {
+  return createHash("sha256").update(JSON.stringify([userId, key])).digest("hex").slice(0, 24);
+}
+
+export async function existingBoardRun(context: AiRequestContext) {
+  const { userId, documentId, idempotencyKey, requestFingerprint } = context;
+  if (!userId || !documentId || !idempotencyKey) return null;
+  const { runs } = await creditCollections();
+  const jobId = boardJobId(userId, idempotencyKey);
+  const ledger = await runs.findOne({ _id: jobId, userId });
+  if (!ledger) return null;
+  if (ledger.requestFingerprint && ledger.requestFingerprint !== requestFingerprint) {
+    throw new BillingError(409, "BOARD_KEY_CONFLICT", "This request key belongs to a different Board action.");
+  }
+  await recoverBoardRuns(userId);
+  const job = await AiJob.findOne({ _id: jobId, userId, documentId }).select("status error +replayData").lean();
+  if (job?.status === "COMPLETED" && job.replayData !== undefined) return job.replayData;
+  if (job?.status === "PROCESSING") {
+    throw new BillingError(409, "BOARD_RUN_PENDING", "Your original Board run is still processing.");
+  }
+  if (job?.status === "FAILED") {
+    throw new BillingError(409, job.error?.code === "BOARD_RUN_EXPIRED" ? "BOARD_RUN_EXPIRED" : "BOARD_RUN_FAILED", "The original Board run did not complete. Start a new run to try again.");
+  }
+  throw new BillingError(409, "BOARD_RUN_ALREADY_SUBMITTED", "This Board run was already submitted. Check your document history for the result.");
+}
+
 export async function startAiJob({
   context,
   type,
@@ -129,11 +156,12 @@ export async function startAiJob({
 
   const userId = context.userId;
   if (!userId) throw new CreditRequiredError(401);
+  await recoverBoardRuns(userId);
   const { connection, wallets, runs } = await creditCollections();
   const rates = type === "AI_DETECTOR" ? { inputRate: 0, outputRate: 0 } : boardRates();
-  const reserved = estimateBoardRun(type, input.text, rates);
+  const reserved = estimateBoardRun(type, input.text, rates, input.mode);
   const jobId = context.idempotencyKey
-    ? createHash("sha256").update(JSON.stringify([userId, context.idempotencyKey])).digest("hex").slice(0, 24)
+    ? boardJobId(userId, context.idempotencyKey)
     : new Types.ObjectId().toHexString();
   try {
     return await connection.transaction(async (session) => {
@@ -146,7 +174,7 @@ export async function startAiJob({
         { session },
       );
       if (!debit.matchedCount) throw new CreditRequiredError(402);
-      await runs.insertOne({ _id: jobId, userId, status: "reserved", reserved, ...rates, createdAt: new Date() }, { session });
+      await runs.insertOne({ _id: jobId, userId, requestFingerprint: context.requestFingerprint, status: "reserved", reserved, ...rates, createdAt: new Date(), lastActivityAt: new Date() }, { session });
       await AiJob.create([{ ...inputJob, _id: jobId, idempotencyKey: context.idempotencyKey }], { session });
       return jobId;
     });
@@ -166,11 +194,12 @@ export async function completeAiJob(
     durationMs: number;
     promptTokens?: number;
     completionTokens?: number;
+    replayData?: unknown;
     boardUsage?: import("@/lib/board-billing.server").BoardUsage;
   },
 ): Promise<void> {
   if (metadata.boardUsage) {
-    await finishBoardRun(jobId, { result, metadata, usage: metadata.boardUsage });
+    await finishBoardRun(jobId, { result, metadata, usage: metadata.boardUsage, replayData: metadata.replayData });
     return;
   }
   try {

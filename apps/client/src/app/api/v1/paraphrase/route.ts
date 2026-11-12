@@ -44,11 +44,34 @@ async function handlePOST(req: NextRequest) {
       requestContext.documentId ? jobId : undefined,
       () => paraphraseText(data),
     );
+
+    const responseData = {
+      jobId,
+      originalText: result.originalText,
+      paraphrasedText: result.paraphrasedText,
+      selectedTone: result.selectedTone.toLowerCase(),
+      selectedFocus: result.selectedFocus.toLowerCase(),
+      processingMetadata: {
+        model: result.processingMetadata.model,
+        duration: result.processingMetadata.durationMs,
+        tokenUsage: result.processingMetadata.tokens
+          ? {
+              promptTokens:
+                result.processingMetadata.tokens.promptTokens ?? 0,
+              completionTokens:
+                result.processingMetadata.tokens.completionTokens ?? 0,
+              totalTokens:
+                result.processingMetadata.tokens.totalTokens ?? 0,
+            }
+          : undefined,
+      },
+    };
     await completeAiJob(
       jobId,
       { content: result.paraphrasedText },
       {
         boardUsage: usage,
+        replayData: responseData,
         model: result.processingMetadata.model,
         durationMs: result.processingMetadata.durationMs,
         promptTokens: result.processingMetadata.tokens?.promptTokens,
@@ -57,30 +80,7 @@ async function handlePOST(req: NextRequest) {
     );
 
     return NextResponse.json(
-      {
-        success: true,
-        data: {
-          jobId,
-          originalText: result.originalText,
-          paraphrasedText: result.paraphrasedText,
-          selectedTone: result.selectedTone.toLowerCase(),
-          selectedFocus: result.selectedFocus.toLowerCase(),
-          processingMetadata: {
-            model: result.processingMetadata.model,
-            duration: result.processingMetadata.durationMs,
-            tokenUsage: result.processingMetadata.tokens
-              ? {
-                  promptTokens:
-                    result.processingMetadata.tokens.promptTokens ?? 0,
-                  completionTokens:
-                    result.processingMetadata.tokens.completionTokens ?? 0,
-                  totalTokens:
-                    result.processingMetadata.tokens.totalTokens ?? 0,
-                }
-              : undefined,
-          },
-        },
-      },
+      { success: true, data: responseData },
       {
         status: 200,
         headers: {

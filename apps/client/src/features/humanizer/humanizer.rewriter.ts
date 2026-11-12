@@ -1,4 +1,4 @@
-import { createTrackedCompletion } from "@/lib/board-billing.server";
+import { createTrackedCompletion, humanizerRewriteOutputBudget } from "@/lib/board-billing.server";
 import { getDeepSeekClient, DEEPSEEK_CONFIG } from "@/lib/ai/deepseek.client";
 import {
   buildRewriterSystemPrompt,
@@ -16,6 +16,7 @@ export interface RewriteTextOptions {
   analysis: WritingAnalysis;
   mode: HumanizerModeType;
   intensity: HumanizerIntensityType;
+  originalText: string;
 }
 
 export interface RewriteResult {
@@ -74,7 +75,7 @@ export async function rewriteText(
       ],
       temperature,
       stream: false,
-    });
+    }, humanizerRewriteOutputBudget(options.originalText, mode));
 
     const content = response.choices?.[0]?.message?.content?.trim();
 

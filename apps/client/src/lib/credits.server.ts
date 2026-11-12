@@ -51,6 +51,7 @@ export async function creditCollections() {
     runs: db.collection<{
       _id: string;
       userId: string;
+      requestFingerprint?: string;
       status: "reserved" | "settled" | "refunded" | "needs_reconciliation";
       reserved: number;
       inputRate: number;
@@ -60,6 +61,7 @@ export async function creditCollections() {
       charged?: number;
       reason?: string;
       createdAt: Date;
+      lastActivityAt?: Date;
       finishedAt?: Date;
     }>("credit_runs"),
     receipts: db.collection<{ _id: string; purchaseId: string }>("credit_payment_receipts"),

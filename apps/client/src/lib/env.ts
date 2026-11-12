@@ -7,7 +7,6 @@ export const env = createEnv({
   server: {
     BOARD_INPUT_MICROCREDITS_PER_1K_TOKENS: z.coerce.number().int().positive().max(1_000_000_000).optional(),
     BOARD_OUTPUT_MICROCREDITS_PER_1K_TOKENS: z.coerce.number().int().positive().max(1_000_000_000).optional(),
-    BOARD_DEFAULT_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().max(1_000_000).default(384_000),
     DODO_PAYMENTS_ENVIRONMENT: z.enum(["test_mode", "live_mode"]).default("test_mode"),
     DODO_PAYMENTS_API_KEY: z.string().optional(),
     DODO_PAYMENTS_WEBHOOK_KEY: z.string().optional(),

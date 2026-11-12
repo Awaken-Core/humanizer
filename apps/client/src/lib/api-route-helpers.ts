@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { publicHumanizerLimit } from "@/lib/credits.server";
 import { checkRateLimit } from "@/lib/ratelimit";
@@ -5,8 +6,8 @@ import {
   ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
   AUTHENTICATED_MAX_INPUT_TEXT_LENGTH,
 } from "@/features/humanizer/humanizer.dto";
-import { getAiRequestContext, type AiRequestContext } from "@/lib/ai-request.server";
-import { createNormalizedErrorResponse, type StandardApiError } from "@/lib/server-error";
+import { existingBoardRun, getAiRequestContext, type AiRequestContext } from "@/lib/ai-request.server";
+import { createNormalizedErrorResponse } from "@/lib/server-error";
 import { z } from "zod";
 
 export interface ParsedApiRequest<T> {
@@ -19,7 +20,7 @@ export interface ParsedApiRequest<T> {
 
 export interface FailedApiRequest {
   success: false;
-  response: NextResponse<StandardApiError>;
+  response: NextResponse;
 }
 
 /**
@@ -97,6 +98,21 @@ export async function parseAndValidateApiRequest<T>(
         overrideMessage: message,
       }),
     };
+  }
+
+  if (requestContext.documentId && requestContext.idempotencyKey) {
+    requestContext.requestFingerprint = createHash("sha256")
+      .update(JSON.stringify([tool, requestContext.documentId, requestContext.inputSource, parseResult.data]))
+      .digest("hex");
+    const replay = await existingBoardRun(requestContext);
+    if (replay !== null) {
+      return {
+        success: false,
+        response: NextResponse.json({ success: true, data: replay }, {
+          headers: { "Cache-Control": "private, no-store", "X-Request-Id": requestId },
+        }),
+      };
+    }
   }
 
   // 5. Rate Limiting (HTTP 503 or 429)

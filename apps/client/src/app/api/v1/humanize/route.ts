@@ -47,6 +47,29 @@ async function handlePOST(req: NextRequest) {
       requestContext.documentId ? jobId : undefined,
       () => humanizeText(data),
     );
+
+    const responseData = {
+      jobId,
+      originalText: result.originalText,
+      humanizedText: result.humanizedText,
+      detectedLanguage: result.detectedLanguage,
+      selectedMode: result.selectedMode.toLowerCase(),
+      selectedIntensity: result.selectedIntensity.toLowerCase(),
+      processingMetadata: {
+        model: result.processingMetadata.model,
+        duration: result.processingMetadata.durationMs,
+        tokenUsage: result.processingMetadata.tokens
+          ? {
+              promptTokens:
+                result.processingMetadata.tokens.promptTokens ?? 0,
+              completionTokens:
+                result.processingMetadata.tokens.completionTokens ?? 0,
+              totalTokens:
+                result.processingMetadata.tokens.totalTokens ?? 0,
+            }
+          : undefined,
+      },
+    };
     await completeAiJob(
       jobId,
       {
@@ -55,6 +78,7 @@ async function handlePOST(req: NextRequest) {
       },
       {
         boardUsage: usage,
+        replayData: responseData,
         model: result.processingMetadata.model,
         durationMs: result.processingMetadata.durationMs,
         promptTokens: result.processingMetadata.tokens?.promptTokens,
@@ -63,31 +87,7 @@ async function handlePOST(req: NextRequest) {
     );
 
     return NextResponse.json(
-      {
-        success: true,
-        data: {
-          jobId,
-          originalText: result.originalText,
-          humanizedText: result.humanizedText,
-          detectedLanguage: result.detectedLanguage,
-          selectedMode: result.selectedMode.toLowerCase(),
-          selectedIntensity: result.selectedIntensity.toLowerCase(),
-          processingMetadata: {
-            model: result.processingMetadata.model,
-            duration: result.processingMetadata.durationMs,
-            tokenUsage: result.processingMetadata.tokens
-              ? {
-                  promptTokens:
-                    result.processingMetadata.tokens.promptTokens ?? 0,
-                  completionTokens:
-                    result.processingMetadata.tokens.completionTokens ?? 0,
-                  totalTokens:
-                    result.processingMetadata.tokens.totalTokens ?? 0,
-                }
-              : undefined,
-          },
-        },
-      },
+      { success: true, data: responseData },
       {
         status: 200,
         headers: {

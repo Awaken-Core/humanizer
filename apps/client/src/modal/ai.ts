@@ -44,6 +44,7 @@ const AiJobSchema = new Schema(
       index: true,
     },
     creditReserved: { type: Boolean },
+    replayData: { type: Schema.Types.Mixed, select: false },
     anonymousId: {
       type: String,
       index: true,

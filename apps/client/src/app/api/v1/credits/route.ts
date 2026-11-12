@@ -1,3 +1,4 @@
+import { recoverBoardRuns } from "@/lib/board-billing.server";
 import { getAuth } from "@/lib/auth";
 import { creditCollections, creditPack, dodoClient, publicHumanizerLimit } from "@/lib/credits.server";
 import { env } from "@/lib/env";
@@ -8,6 +9,7 @@ export async function GET(request: Request) {
   const publicLimit = await publicHumanizerLimit(session?.user.id);
   const headers = { "Cache-Control": "private, no-store" };
   if (!pack) return Response.json({ enabled: false, publicHumanizerLimit: publicLimit }, { headers });
+  if (session) await recoverBoardRuns(session.user.id);
   const wallet = session && await (await creditCollections()).wallets.findOne({ _id: session.user.id });
   return Response.json({
     enabled: true,
