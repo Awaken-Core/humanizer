@@ -1,3 +1,4 @@
+import { withBoardUsage } from "@/lib/board-billing.server";
 import { withDatabaseScope } from "@/lib/db";
 if (typeof window !== "undefined") {
   throw new Error("This module can only be executed on the server.");
@@ -41,9 +42,13 @@ async function handlePOST(req: NextRequest): Promise<NextResponse> {
       input: { text: data.text },
     });
 
-    const result = detectAi({ text: data.text });
+    const { result, usage } = await withBoardUsage(
+      requestContext.documentId ? jobId : undefined,
+      () => detectAi({ text: data.text }),
+    );
 
     await completeAiJob(jobId, result, {
+      boardUsage: usage,
       model: "decision-based",
       durationMs: Date.now() - start,
     });

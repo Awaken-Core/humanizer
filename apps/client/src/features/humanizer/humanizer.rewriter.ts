@@ -1,3 +1,4 @@
+import { createTrackedCompletion } from "@/lib/board-billing.server";
 import { getDeepSeekClient, DEEPSEEK_CONFIG } from "@/lib/ai/deepseek.client";
 import {
   buildRewriterSystemPrompt,
@@ -59,7 +60,7 @@ export async function rewriteText(
   const temperature = getTemperatureForIntensity(intensity);
 
   try {
-    const response = await client.chat.completions.create({
+    const response = await createTrackedCompletion(client, {
       model,
       messages: [
         {

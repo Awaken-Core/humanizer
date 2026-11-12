@@ -2,6 +2,7 @@ import { z } from "zod";
 import { HumanizerIntensity, HumanizerMode } from "./humanizer.types";
 
 export const ANONYMOUS_MAX_INPUT_TEXT_LENGTH = 800;
+export const PRO_PUBLIC_MAX_INPUT_TEXT_LENGTH = 1_500;
 export const AUTHENTICATED_MAX_INPUT_TEXT_LENGTH = 15_000;
 export const MAX_INPUT_TEXT_LENGTH = AUTHENTICATED_MAX_INPUT_TEXT_LENGTH;
 

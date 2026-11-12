@@ -298,7 +298,7 @@ export const useToolStore = create<ToolStore>((set, get) => ({
         signal: abortController.signal,
         headers: {
           "Content-Type": "application/json",
-          ...(documentId ? { "X-Document-Id": documentId } : {}),
+          ...(documentId ? { "X-Document-Id": documentId, "X-Idempotency-Key": crypto.randomUUID() } : {}),
           ...(inputSource ? { "X-Tool-Input-Source": inputSource } : {}),
         },
         body: JSON.stringify(payload),

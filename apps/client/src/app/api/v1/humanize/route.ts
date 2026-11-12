@@ -1,3 +1,4 @@
+import { withBoardUsage } from "@/lib/board-billing.server";
 import { withDatabaseScope } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { humanizeText, HumanizerError } from "@/features/humanizer";
@@ -42,7 +43,10 @@ async function handlePOST(req: NextRequest) {
       },
     });
 
-    const result = await humanizeText(data);
+    const { result, usage } = await withBoardUsage(
+      requestContext.documentId ? jobId : undefined,
+      () => humanizeText(data),
+    );
     await completeAiJob(
       jobId,
       {
@@ -50,6 +54,7 @@ async function handlePOST(req: NextRequest) {
         detectedLanguage: result.detectedLanguage,
       },
       {
+        boardUsage: usage,
         model: result.processingMetadata.model,
         durationMs: result.processingMetadata.durationMs,
         promptTokens: result.processingMetadata.tokens?.promptTokens,

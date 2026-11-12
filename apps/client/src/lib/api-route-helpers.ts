@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { publicHumanizerLimit } from "@/lib/credits.server";
 import { checkRateLimit } from "@/lib/ratelimit";
 import {
   ANONYMOUS_MAX_INPUT_TEXT_LENGTH,
@@ -70,9 +71,12 @@ export async function parseAndValidateApiRequest<T>(
 
   // 3. User & Session Context
   const requestContext = await getAiRequestContext(req);
-  const maxInputLength = requestContext.isAuthenticated
+  let maxInputLength = requestContext.isAuthenticated
     ? AUTHENTICATED_MAX_INPUT_TEXT_LENGTH
     : ANONYMOUS_MAX_INPUT_TEXT_LENGTH;
+  if (tool === "humanizer" && !requestContext.documentId) {
+    maxInputLength = await publicHumanizerLimit(requestContext.userId);
+  }
 
   // 4. Schema Validation (HTTP 413 or 400)
   const parseResult = schemaFactory(maxInputLength).safeParse(body);

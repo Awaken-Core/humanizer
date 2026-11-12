@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
+import { useSession } from "@/lib/auth-client";
 import styles from "@/app/landing.module.css";
 
 const plans = [
@@ -49,8 +50,73 @@ const plans = [
   },
 ];
 
+type CreditPack = {
+  enabled: true;
+  packCredits: number;
+  signedIn: boolean;
+  balance: number;
+} | { enabled: false };
+
 export function PricingSection() {
+  const { data: session } = useSession();
+  const [pack, setPack] = useState<CreditPack | null>(null);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const refresh = async () => {
+      try {
+        const response = await fetch("/api/v1/credits", { signal: controller.signal, cache: "no-store" });
+        if (response.ok) setPack(await response.json());
+      } catch {
+        // A later focus or reload can retry the balance lookup.
+      }
+    };
+    void refresh();
+    window.addEventListener("focus", refresh);
+    return () => {
+      controller.abort();
+      window.removeEventListener("focus", refresh);
+    };
+  }, [session?.user.id]);
+
+  async function buyCredits() {
+    if (pack?.enabled && !pack.signedIn) {
+      window.dispatchEvent(new Event("country-rank:open-sign-in"));
+      return;
+    }
+    setPending(true);
+    setError("");
+    try {
+      const response = await fetch("/api/v1/credits", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      window.location.assign(data.checkoutUrl);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Checkout could not be started.");
+      setPending(false);
+    }
+  }
+
   const [annual, setAnnual] = useState(false);
+
+  if (!pack) return null;
+  if (pack.enabled) {
+    return (
+      <div className={styles.pricingGrid}>
+        <article className={styles.plan}>
+          <h3>{pack.packCredits} credits</h3>
+          <p>One-time purchase. Board AI runs use credits based on input and output tokens.</p>
+          {pack.signedIn && <p aria-live="polite">Balance: {pack.balance} credits</p>}
+          <button type="button" className={styles.button} disabled={pending} onClick={buyCredits}>
+            {pending ? "Opening checkout…" : pack.signedIn ? "Buy credits" : "Sign in to buy credits"}
+          </button>
+          {error && <p role="alert">{error}</p>}
+        </article>
+      </div>
+    );
+  }
 
   return (
     <>

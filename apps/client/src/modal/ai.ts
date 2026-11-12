@@ -43,6 +43,7 @@ const AiJobSchema = new Schema(
       ref: "User",
       index: true,
     },
+    creditReserved: { type: Boolean },
     anonymousId: {
       type: String,
       index: true,

@@ -1,3 +1,4 @@
+import { withBoardUsage } from "@/lib/board-billing.server";
 import { withDatabaseScope } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { checkPlagiarism, PlagiarismError } from "@/features/plagiarism";
@@ -41,7 +42,10 @@ async function handlePOST(req: NextRequest) {
       input: { text: data.text },
     });
 
-    const result = await checkPlagiarism(data);
+    const { result, usage } = await withBoardUsage(
+      requestContext.documentId ? jobId : undefined,
+      () => checkPlagiarism(data),
+    );
 
     await completeAiJob(
       jobId,
@@ -52,6 +56,7 @@ async function handlePOST(req: NextRequest) {
         processingTimeMs: result.processingTimeMs,
       },
       {
+        boardUsage: usage,
         model: "retrieval+scoring",
         durationMs: result.processingTimeMs,
       },

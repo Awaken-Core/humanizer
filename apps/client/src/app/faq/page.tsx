@@ -32,8 +32,8 @@ const faqData = [
     a: "No. AI detection tools are statistical estimators and are inherently prone to false positives and false negatives. Peer-reviewed research from Stanford University demonstrated a false-positive rate over 61% when evaluating essays by non-native English speakers. Detection results should never be treated as definitive proof of authorship.",
   },
   {
-    q: "Is Humanizer free to use? Are there hidden paywalls or word limits?",
-    a: "Humanizer is 100% free to use. Unlike commercial tools that cap free users at 125 or 250 words and demand $20/month subscriptions, Humanizer supports up to 15,000 characters per request with zero subscription paywalls.",
+    q: "Does Humanizer require a subscription?",
+    a: "Humanizer supports up to 15,000 characters per request. Where credit packs are available, credits are purchased with a one-time payment.",
   },
   {
     q: "Is my writing private and safe? Do you store or train on user text?",

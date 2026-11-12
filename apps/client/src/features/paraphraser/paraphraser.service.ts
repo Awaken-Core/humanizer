@@ -1,3 +1,4 @@
+import { createTrackedCompletion } from "@/lib/board-billing.server";
 import { DEEPSEEK_CONFIG, getDeepSeekClient } from "@/lib/ai/deepseek.client";
 import { HumanizerError, ProviderApiError } from "@/features/humanizer";
 import {
@@ -50,7 +51,7 @@ async function generateParaphrase(
   const model = DEEPSEEK_CONFIG.defaultModel;
 
   try {
-    const response = await client.chat.completions.create({
+    const response = await createTrackedCompletion(client, {
       model,
       messages: [
         {

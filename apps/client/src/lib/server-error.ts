@@ -1,3 +1,5 @@
+import { BillingError } from "@/lib/board-billing.server";
+import { CreditRequiredError } from "@/lib/credits.server";
 import { NextResponse } from "next/server";
 
 export interface StandardApiError {
@@ -227,6 +229,12 @@ export function createNormalizedErrorResponse(
   }
 ): NextResponse<StandardApiError> {
   const requestId = options.requestId || crypto.randomUUID();
+  if (error instanceof CreditRequiredError || error instanceof BillingError) {
+    return NextResponse.json(
+      { success: false, error: { code: error instanceof BillingError ? error.code : "CREDITS_REQUIRED", message: error.message, requestId, retryable: false } },
+      { status: error.status, headers: { "X-Request-Id": requestId } },
+    );
+  }
   const classification = classifyError(error, options.status);
 
   const code = options.overrideCode || classification.code;
